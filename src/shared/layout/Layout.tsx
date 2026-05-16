@@ -46,21 +46,27 @@ export default function Layout({ children, activeView, onViewChange, onLogout }:
         </nav>
 
         <div className="pt-8 border-t border-brand-border">
-          <div
-            className="flex items-center space-x-4 mb-6 p-2 rounded-2xl hover:bg-slate-50 transition-colors cursor-pointer"
-            onClick={() => onViewChange("profile")}
-          >
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 border-2 border-white shadow-md overflow-hidden">
-              <img
-                src={user?.avatar ?? "https://i.pravatar.cc/100?u=default"}
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
+          <div className="flex items-center gap-2 mb-6">
+            <div
+              className="flex-1 flex items-center space-x-4 p-2 rounded-2xl hover:bg-slate-50 transition-colors cursor-pointer min-w-0"
+              onClick={() => onViewChange("profile")}
+            >
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 border-2 border-white shadow-md overflow-hidden flex-shrink-0">
+                <img
+                  src={user?.avatar ?? "https://i.pravatar.cc/100?u=default"}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-sm truncate">{user?.name ?? "Usuario"}</p>
+                <p className="text-xs text-brand-text-muted font-medium capitalize">{user?.role ?? "member"}</p>
+              </div>
             </div>
-            <div>
-              <p className="font-bold text-sm">{user?.name ?? "Usuario"}</p>
-              <p className="text-xs text-brand-text-muted font-medium capitalize">{user?.role ?? "member"}</p>
-            </div>
+            <button className="relative p-2.5 rounded-2xl hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition-colors flex-shrink-0">
+              <Bell size={20} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+            </button>
           </div>
           <button
             onClick={onLogout}
