@@ -52,7 +52,7 @@ export function usePosts() {
     const res = await fetch("/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, author: user?.name, avatar: user?.avatar, userId: user?.id }),
+      body: JSON.stringify({ content, userId: user?.id }),
     });
     const newPost = await res.json();
     setPosts((prev) => [newPost, ...prev]);

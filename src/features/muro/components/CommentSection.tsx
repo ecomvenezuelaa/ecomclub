@@ -7,7 +7,7 @@ import { useAuth } from "../../../context/AuthContext";
 interface CommentSectionProps {
   comments: Comment[];
   isLoading: boolean;
-  onAddComment: (content: string, author: string, avatar?: string) => Promise<void>;
+  onAddComment: (content: string) => Promise<void>;
 }
 
 export default function CommentSection({ comments, isLoading, onAddComment }: CommentSectionProps) {
@@ -18,7 +18,7 @@ export default function CommentSection({ comments, isLoading, onAddComment }: Co
   const handleSubmit = async () => {
     if (!value.trim()) return;
     setIsSending(true);
-    await onAddComment(value.trim(), user?.name ?? "Anónimo", user?.avatar);
+    await onAddComment(value.trim());
     setValue("");
     setIsSending(false);
   };

@@ -26,11 +26,11 @@ export function useComments(postId: string) {
     setIsOpen((prev) => !prev);
   };
 
-  const addComment = async (content: string, author: string, avatar?: string) => {
+  const addComment = async (content: string) => {
     const res = await fetch(`/api/posts/${postId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, author, avatar, userId: user?.id }),
+      body: JSON.stringify({ content, userId: user?.id }),
     });
     if (!res.ok) return;
     const newComment: Comment = await res.json();

@@ -30,12 +30,10 @@ app.use(express.json({ limit: "5mb" }));
       return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres" });
     }
 
-    // Usamos admin para crear el usuario SIN requerir confirmación de email
     const { data, error } = await supabase.auth.admin.createUser({
       email,
       password,
-      email_confirm: true,          // <-- confirma el email automáticamente
-      user_metadata: { name, role }
+      email_confirm: true
     });
 
     if (error) {
@@ -48,7 +46,16 @@ app.use(express.json({ limit: "5mb" }));
       return res.status(400).json({ error: "No se pudo crear la cuenta" });
     }
 
-    // Ahora hacemos sign in para obtener el token
+    const defaultAvatar = `https://i.pravatar.cc/150?u=${data.user.id}`;
+    const { error: profileInsertError } = await supabase.from("profiles").upsert({
+      id: data.user.id,
+      name,
+      role,
+      avatar: defaultAvatar,
+      bio: ""
+    });
+    if (profileInsertError) console.error("Profile upsert error:", profileInsertError);
+
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -65,10 +72,11 @@ app.use(express.json({ limit: "5mb" }));
     res.status(201).json({
       user: {
         id: data.user.id,
-        name: data.user.user_metadata.name ?? name,
+        name,
         email: data.user.email!,
-        role: data.user.user_metadata.role ?? role,
-        avatar: `https://i.pravatar.cc/150?u=${data.user.id}`
+        role,
+        avatar: defaultAvatar,
+        bio: ""
       },
       token: signInData.session.access_token
     });
@@ -96,14 +104,30 @@ app.use(express.json({ limit: "5mb" }));
       return res.status(401).json({ error: error.message });
     }
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("name, role, avatar, bio")
+      .eq("id", data.user.id)
+      .maybeSingle();
+
+    if (!profile) {
+      await supabase.from("profiles").upsert({
+        id: data.user.id,
+        name: data.user.email!.split("@")[0],
+        role: "student",
+        avatar: `https://i.pravatar.cc/150?u=${data.user.id}`,
+        bio: ""
+      });
+    }
+
     res.json({
       user: {
         id: data.user.id,
-        name: data.user.user_metadata.name ?? data.user.email!.split("@")[0],
+        name: profile?.name ?? data.user.email!.split("@")[0],
         email: data.user.email!,
-        role: data.user.user_metadata.role ?? "student",
-        avatar: data.user.user_metadata.avatar ?? `https://i.pravatar.cc/150?u=${data.user.id}`,
-        bio: data.user.user_metadata.bio ?? ""
+        role: profile?.role ?? "student",
+        avatar: profile?.avatar ?? `https://i.pravatar.cc/150?u=${data.user.id}`,
+        bio: profile?.bio ?? ""
       },
       token: data.session.access_token
     });
@@ -158,34 +182,27 @@ app.use(express.json({ limit: "5mb" }));
       return res.status(400).json({ error: "User ID is required" });
     }
 
-    const { data, error } = await supabase.auth.admin.updateUserById(id, {
-      user_metadata: { name, avatar, bio }
-    });
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    // Actualizar tabla profiles
-    await supabase
+    const { data: updated, error: profileError } = await supabase
       .from("profiles")
       .update({ name, avatar, bio, updated_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id)
+      .select("name, role, avatar, bio")
+      .single();
 
-    // Propagar nombre y avatar a posts y comentarios del usuario
-    await Promise.all([
-      supabase.from("posts").update({ author: name, avatar }).eq("user_id", id),
-      supabase.from("post_comments").update({ author: name, avatar }).eq("user_id", id),
-    ]);
+    if (profileError) {
+      return res.status(400).json({ error: profileError.message });
+    }
+
+    const { data: authUser } = await supabase.auth.admin.getUserById(id);
 
     res.json({
       user: {
-        id: data.user.id,
-        name: data.user.user_metadata.name ?? data.user.email!.split("@")[0],
-        email: data.user.email!,
-        role: data.user.user_metadata.role ?? "student",
-        avatar: data.user.user_metadata.avatar ?? `https://i.pravatar.cc/150?u=${data.user.id}`,
-        bio: data.user.user_metadata.bio ?? ""
+        id,
+        name: updated.name,
+        email: authUser?.user?.email ?? "",
+        role: updated.role,
+        avatar: updated.avatar,
+        bio: updated.bio
       }
     });
   });
@@ -198,7 +215,7 @@ app.use(express.json({ limit: "5mb" }));
     const cursor = req.query.cursor as string | undefined;
 
     let query = supabase
-      .from("posts")
+      .from("posts_view")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -221,31 +238,34 @@ app.use(express.json({ limit: "5mb" }));
   });
 
   app.post("/api/posts", async (req, res) => {
-    const { content, author, avatar, userId } = req.body;
+    const { content, userId } = req.body;
 
     if (!content || typeof content !== "string" || content.trim() === "") {
       return res.status(400).json({ error: "El contenido es requerido" });
     }
+    if (!userId) {
+      return res.status(400).json({ error: "userId es requerido" });
+    }
 
     const { data, error } = await supabase
       .from("posts")
-      .insert({
-        user_id: userId ?? null,
-        author: author ?? "Anónimo",
-        role: "Estudiante",
-        content: content.trim(),
-        likes: 0,
-        comments: 0,
-        avatar: avatar ?? `https://i.pravatar.cc/150?u=${Date.now()}`
-      })
-      .select()
+      .insert({ user_id: userId, content: content.trim() })
+      .select("id, user_id, content, tags, created_at")
       .single();
 
     if (error) {
       console.error("Error creating post:", error.message);
       return res.status(500).json({ error: error.message });
     }
-    res.status(201).json(data);
+
+    // Devolver con los campos del view para consistencia
+    const { data: fullPost } = await supabase
+      .from("posts_view")
+      .select("*")
+      .eq("id", data.id)
+      .single();
+
+    res.status(201).json(fullPost ?? data);
   });
 
   // ──────────────────────────────────────────────
@@ -275,8 +295,6 @@ app.use(express.json({ limit: "5mb" }));
       .select("*", { count: "exact", head: true })
       .eq("post_id", id);
 
-    await supabase.from("posts").update({ likes: count ?? 0 }).eq("id", id);
-
     res.json({ liked: !existing, likes: count ?? 0 });
   });
 
@@ -288,36 +306,49 @@ app.use(express.json({ limit: "5mb" }));
 
     const { data, error } = await supabase
       .from("post_comments")
-      .select("*")
+      .select("id, post_id, user_id, content, created_at, profiles(name, avatar)")
       .eq("post_id", id)
       .order("created_at", { ascending: true });
 
     if (error) return res.status(500).json({ error: error.message });
-    res.json(data ?? []);
+
+    const comments = (data ?? []).map((c: any) => ({
+      id: c.id,
+      post_id: c.post_id,
+      user_id: c.user_id,
+      content: c.content,
+      created_at: c.created_at,
+      author: c.profiles?.name ?? "Anónimo",
+      avatar: c.profiles?.avatar ?? null
+    }));
+
+    res.json(comments);
   });
 
   app.post("/api/posts/:id/comments", async (req, res) => {
     const { id } = req.params;
-    const { content, author, avatar, userId } = req.body;
+    const { content, userId } = req.body;
 
     if (!content?.trim()) return res.status(400).json({ error: "Contenido requerido" });
+    if (!userId) return res.status(400).json({ error: "userId requerido" });
 
     const { data, error } = await supabase
       .from("post_comments")
-      .insert({ post_id: id, user_id: userId ?? null, content: content.trim(), author: author ?? "Anónimo", avatar })
-      .select()
+      .insert({ post_id: id, user_id: userId, content: content.trim() })
+      .select("id, post_id, user_id, content, created_at, profiles(name, avatar)")
       .single();
 
     if (error) return res.status(500).json({ error: error.message });
 
-    const { count } = await supabase
-      .from("post_comments")
-      .select("*", { count: "exact", head: true })
-      .eq("post_id", id);
-
-    await supabase.from("posts").update({ comments: count ?? 0 }).eq("id", id);
-
-    res.status(201).json(data);
+    res.status(201).json({
+      id: data.id,
+      post_id: data.post_id,
+      user_id: data.user_id,
+      content: data.content,
+      created_at: data.created_at,
+      author: (data as any).profiles?.name ?? "Anónimo",
+      avatar: (data as any).profiles?.avatar ?? null
+    });
   });
 
   // ──────────────────────────────────────────────
