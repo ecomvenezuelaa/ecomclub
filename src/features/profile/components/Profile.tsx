@@ -42,12 +42,16 @@ export default function Profile() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: user?.id, imageData: dataUrl })
         })
-          .then((res) => res.json())
-          .then((data) => {
-            // Guardar la URL de Supabase por separado, sin tocar el preview
+          .then(async (res) => {
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error ?? "Error al subir imagen");
             if (data.url) setUploadedAvatarUrl(data.url);
+            else throw new Error("URL de imagen no recibida");
           })
-          .catch(console.error)
+          .catch((err) => {
+            console.error("Avatar upload error:", err);
+            alert("No se pudo subir la imagen: " + err.message);
+          })
           .finally(() => setIsUploadingImage(false));
       };
       img.src = reader.result as string;

@@ -137,15 +137,15 @@ app.use(express.json({ limit: "5mb" }));
       return res.status(500).json({ error: uploadError.message });
     }
 
-    const { data: signedData, error: signError } = await supabase.storage
+    const { data: publicData } = supabase.storage
       .from("Avatars")
-      .createSignedUrl(filePath, 315360000); // 10 años en segundos
+      .getPublicUrl(filePath);
 
-    if (signError || !signedData) {
+    if (!publicData?.publicUrl) {
       return res.status(500).json({ error: "No se pudo generar la URL de la imagen" });
     }
 
-    res.json({ url: signedData.signedUrl });
+    res.json({ url: publicData.publicUrl });
   });
 
   // ──────────────────────────────────────────────
