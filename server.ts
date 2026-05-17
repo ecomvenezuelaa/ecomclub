@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = "https://gpnaanncccpbxqpooxhz.supabase.co";
