@@ -7,6 +7,7 @@ import Register from "./features/auth/components/Register";
 import PostFeed from "./features/muro/components/PostFeed";
 import Classroom from "./features/classroom/components/Classroom";
 import Profile from "./features/profile/components/Profile";
+import AdminDashboard from "./features/admin/AdminDashboard";
 import { View } from "./types";
 
 type AuthScreen = "login" | "register";
@@ -41,6 +42,8 @@ function MainApp() {
         return <Classroom />;
       case "profile":
         return <Profile />;
+      case "admin":
+        return <AdminDashboard />;
       case "explore":
         return (
           <div className="text-center py-20">

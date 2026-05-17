@@ -24,7 +24,7 @@ export interface Course {
   thumbnail: string;
 }
 
-export type View = "muro" | "classroom" | "profile" | "explore";
+export type View = "muro" | "classroom" | "profile" | "explore" | "admin";
 
 export interface Comment {
   id: string;

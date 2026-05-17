@@ -1,6 +1,6 @@
 import React from "react";
 import logo from "../../assets/logo.png";
-import { MessageSquare, School, Compass, User, Bell, LayoutGrid, LogOut } from "lucide-react";
+import { MessageSquare, School, Compass, User, Bell, LayoutGrid, LogOut, Shield } from "lucide-react";
 import { View } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 
@@ -29,6 +29,7 @@ export default function Layout({ children, activeView, onViewChange, onLogout }:
             { id: "classroom", label: "Aula Virtual", icon: <School size={20} /> },
             { id: "explore", label: "Explorar", icon: <Compass size={20} /> },
             { id: "profile", label: "Mi Perfil", icon: <User size={20} /> },
+            { id: "admin", label: "Admin", icon: <Shield size={20} /> },
           ].map((item) => (
             <button
               key={item.id}
@@ -110,6 +111,7 @@ export default function Layout({ children, activeView, onViewChange, onLogout }:
           { id: "classroom", icon: <School size={24} /> },
           { id: "explore", icon: <Compass size={24} /> },
           { id: "profile", icon: <User size={24} /> },
+          { id: "admin", icon: <Shield size={24} /> },
         ].map((item) => (
           <button
             key={item.id}
