@@ -93,6 +93,12 @@ export default function Layout({ children, activeView, onViewChange, onLogout }:
             <button className="p-2 text-brand-text-muted hover:bg-slate-100 rounded-full">
               <LayoutGrid size={20} />
             </button>
+            <button
+              onClick={onLogout}
+              className="p-2 text-red-400 hover:bg-red-50 rounded-full transition-colors"
+            >
+              <LogOut size={20} />
+            </button>
           </div>
         </header>
 

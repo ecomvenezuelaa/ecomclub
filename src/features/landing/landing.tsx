@@ -1,14 +1,5 @@
-import React, { useState } from "react";
-import { 
-  Play, 
-  CheckCircle2, 
-  Users, 
-  Zap, 
-  Star, 
-  ArrowRight,
-  ShieldCheck,
-  Globe
-} from "lucide-react";
+import { useState } from "react";
+import { Play, Users, Zap, ArrowRight, ShieldCheck, Globe } from "lucide-react";
 import { motion } from "motion/react";
 
 interface LandingProps {
@@ -28,6 +19,21 @@ export default function Landing({ onViewChange }: LandingProps) {
           </div>
           <span className="font-black text-xl text-slate-900 tracking-tight">Iconicfy</span>
         </div>
+        <div className="flex md:hidden items-center gap-2">
+          <button
+            onClick={() => onViewChange("login")}
+            className="px-4 py-2 text-sm font-bold text-slate-900 border-2 border-slate-100 rounded-xl hover:bg-slate-50 transition-all"
+          >
+            Iniciar Sesión
+          </button>
+          <button
+            onClick={() => onViewChange("register")}
+            className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 rounded-xl shadow-lg shadow-indigo-100 transition-all"
+          >
+            Únete
+          </button>
+        </div>
+
         <div className="hidden md:flex items-center space-x-8">
           <a href="#vsl" className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">¿Cómo funciona?</a>
           <a href="#features" className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">Beneficios</a>
@@ -56,9 +62,6 @@ export default function Landing({ onViewChange }: LandingProps) {
           <h1 className="text-5xl md:text-7xl font-black text-slate-900 mb-8 leading-[1.05] tracking-tight max-w-4xl mx-auto">
             Crea un área de miembros <span className="text-indigo-600">profesional</span> en minutos.
           </h1>
-          <p className="text-lg md:text-xl text-slate-500 font-medium max-w-2xl mx-auto mb-12">
-            El modelo de negocios de comunidades y área de miembros es uno de los más exitosos de los últimos tiempos en el mercado de productores digitales, y ¡Venezuela es el mejor mercado para hacerlo!
-          </p>
         </motion.div>
 
         {/* VSL (Video Sales Letter) */}
@@ -93,12 +96,23 @@ export default function Landing({ onViewChange }: LandingProps) {
                 <div className="absolute inset-0 rounded-full bg-white/30 animate-ping"></div>
               </button>
               
-              <div className="absolute bottom-10 left-10 text-left pointer-events-none">
-                <p className="text-white font-black text-xl">Mira el video: "Cómo convertir tu comunidad de seguidores, en ingresos mensuales"</p>
-                <p className="text-white/60 text-sm font-medium">8:42 min • Exclusivo para nuevos miembros</p>
-              </div>
             </>
           )}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.5 }}
+          className="mt-10"
+        >
+          <button
+            onClick={() => onViewChange("login")}
+            className="inline-flex items-center gap-3 px-12 py-5 bg-indigo-600 text-white font-black text-lg rounded-2xl shadow-xl shadow-indigo-200 hover:scale-105 active:scale-95 transition-all"
+          >
+            Quiero acceder ahora <ArrowRight size={22} />
+          </button>
+          <p className="mt-4 text-sm font-bold text-slate-400">Sin tarjeta de crédito • Acceso inmediato</p>
         </motion.div>
       </section>
 

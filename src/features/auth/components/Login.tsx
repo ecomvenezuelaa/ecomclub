@@ -46,7 +46,7 @@ export default function Login({ onGoToRegister }: LoginProps) {
         className="w-full max-w-[1000px] grid grid-cols-1 md:grid-cols-12 gap-6"
       >
         {/* Left Side: Branding */}
-        <div className="md:col-span-7 bg-slate-900 rounded-[2.5rem] p-12 text-white relative overflow-hidden flex flex-col justify-between min-h-[400px]">
+        <div className="hidden md:flex md:col-span-7 bg-slate-900 rounded-[2.5rem] p-12 text-white relative overflow-hidden flex-col justify-between min-h-[400px]">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 to-transparent"></div>
           <div className="absolute -top-24 -left-24 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl"></div>
 
@@ -75,6 +75,10 @@ export default function Login({ onGoToRegister }: LoginProps) {
 
         {/* Right Side: Form */}
         <div className="md:col-span-5 bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm flex flex-col justify-center">
+          <div className="flex md:hidden items-center gap-3 mb-8">
+            <img src={logo} alt="Logo" className="w-10 h-10 object-contain" />
+            <span className="font-bold text-xl tracking-tight text-slate-900">Emprende Más</span>
+          </div>
           <h2 className="text-2xl font-black text-slate-900 mb-8">Iniciar Sesión</h2>
 
           <form onSubmit={handleSubmit} className="space-y-6">

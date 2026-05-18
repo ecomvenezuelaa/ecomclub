@@ -47,14 +47,15 @@ app.use(express.json({ limit: "5mb" }));
     }
 
     const defaultAvatar = `https://i.pravatar.cc/150?u=${data.user.id}`;
-    const { error: profileInsertError } = await supabase.from("profiles").upsert({
-      id: data.user.id,
-      name,
-      role,
-      avatar: defaultAvatar,
-      bio: ""
-    });
-    if (profileInsertError) console.error("Profile upsert error:", profileInsertError);
+    const { data: profileData, error: profileInsertError } = await supabase
+      .from("profiles")
+      .insert({ id: data.user.id, name, role, avatar: defaultAvatar, bio: "" })
+      .select()
+      .single();
+    console.log("Profile insert →", { profileData, profileInsertError });
+    if (profileInsertError) {
+      return res.status(500).json({ error: `Error creando perfil: ${profileInsertError.message}` });
+    }
 
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
