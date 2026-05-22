@@ -9,6 +9,10 @@
   --color-brand-border: #e2e8f0;
   --color-brand-text-main: #0f172a;
   --color-brand-text-muted: #64748b;
+
+  --color-profile-accent: #f97316;
+  --color-profile-brown: #8b5e3c;
+  --color-profile-surface: #f0f9ff;
 }
 
 @layer base {

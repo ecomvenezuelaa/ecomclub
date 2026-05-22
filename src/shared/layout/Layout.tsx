@@ -18,9 +18,8 @@ export default function Layout({ children, activeView, onViewChange, onLogout }:
     <div className="flex min-h-screen bg-brand-background text-brand-text-main overflow-hidden">
       {/* Sidebar - Persistent on Desktop */}
       <aside className="hidden lg:flex w-72 bg-white border-r border-brand-border flex-col p-8 space-y-10 flex-shrink-0">
-        <div className="flex items-center space-x-3 group cursor-pointer" onClick={() => onViewChange("muro")}>
+        <div className="group cursor-pointer" onClick={() => onViewChange("muro")}>
           <img src={logo} alt="Logo" className="w-10 h-10 object-contain transition-transform group-hover:scale-110" />
-          <span className="font-bold text-2xl tracking-tight">Emprende Más</span>
         </div>
 
         <nav className="flex-1 space-y-3">
@@ -84,10 +83,12 @@ export default function Layout({ children, activeView, onViewChange, onLogout }:
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Top Header Mobile */}
         <header className="lg:hidden h-16 bg-white border-b border-brand-border px-6 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center space-x-2">
-            <img src={logo} alt="Logo" className="w-8 h-8 object-contain" />
-            <span className="font-bold text-lg tracking-tight">Emprende Más</span>
-          </div>
+          <img
+            src={logo}
+            alt="Logo"
+            className="w-8 h-8 object-contain cursor-pointer"
+            onClick={() => onViewChange("muro")}
+          />
           <div className="flex items-center gap-2">
             <button className="p-2 text-brand-text-muted hover:bg-slate-100 rounded-full">
               <Bell size={20} />
@@ -105,32 +106,53 @@ export default function Layout({ children, activeView, onViewChange, onLogout }:
         </header>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto w-full">
-          <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
+        <main className="flex-1 overflow-y-auto w-full pb-24 lg:pb-0">
+          <div
+            className={`max-w-7xl mx-auto space-y-8 ${
+              activeView === "profile" ? "p-0 md:p-8" : "p-4 md:p-8"
+            }`}
+          >
             {children}
           </div>
         </main>
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-brand-border h-20 flex items-center justify-around px-4 z-50">
-        {[
-          { id: "muro", icon: <MessageSquare size={24} /> },
-          { id: "classroom", icon: <School size={24} /> },
-          { id: "explore", icon: <Compass size={24} /> },
-          { id: "profile", icon: <User size={24} /> },
-          { id: "admin", icon: <Shield size={24} /> },
-        ].map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onViewChange(item.id as View)}
-            className={`p-4 rounded-2xl transition-all ${
-              activeView === item.id ? "bg-indigo-50 text-brand-primary" : "text-brand-text-muted"
-            }`}
-          >
-            {item.icon}
-          </button>
-        ))}
+      <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-brand-border px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-50 shadow-[0_-4px_24px_rgba(15,23,42,0.06)]">
+        <div className="flex items-end justify-around max-w-lg mx-auto">
+          {[
+            { id: "muro", label: "Home", icon: MessageSquare },
+            { id: "classroom", label: "Classroom", icon: School },
+            { id: "explore", label: "Calendario", icon: Compass },
+            { id: "profile", label: "Perfil", icon: User },
+          ].map((item) => {
+            const isActive = activeView === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onViewChange(item.id as View)}
+                className={`flex flex-col items-center gap-1 min-w-[4.5rem] py-1 transition-all ${
+                  isActive ? "text-orange-600" : "text-slate-400"
+                }`}
+              >
+                <span
+                  className={`flex items-center justify-center rounded-full transition-all ${
+                    isActive
+                      ? "w-12 h-12 bg-orange-500 text-white shadow-lg shadow-orange-200/70 -mt-3"
+                      : "w-10 h-10"
+                  }`}
+                >
+                  <Icon size={isActive ? 22 : 20} strokeWidth={isActive ? 2.5 : 2} />
+                </span>
+                <span className={`text-[10px] font-bold ${isActive ? "text-orange-600" : "text-slate-400"}`}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </nav>
     </div>
   );
