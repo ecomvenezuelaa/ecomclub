@@ -1,47 +1,59 @@
 import React from "react";
 import logo from "../../assets/logo.png";
 import { MessageSquare, School, Compass, User, Bell, LayoutGrid, LogOut, Shield } from "lucide-react";
-import { View } from "../../types";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 interface LayoutProps {
   children: React.ReactNode;
-  activeView: View;
-  onViewChange: (view: View) => void;
   onLogout: () => void;
 }
 
-export default function Layout({ children, activeView, onViewChange, onLogout }: LayoutProps) {
+const desktopNav = [
+  { path: "/muro", label: "Comunidad", icon: <MessageSquare size={20} /> },
+  { path: "/classroom", label: "Aula Virtual", icon: <School size={20} /> },
+  { path: "/explore", label: "Explorar", icon: <Compass size={20} /> },
+  { path: "/profile", label: "Mi Perfil", icon: <User size={20} /> },
+  { path: "/admin", label: "Admin", icon: <Shield size={20} /> },
+];
+
+const mobileNav = [
+  { path: "/muro", label: "Home", icon: MessageSquare },
+  { path: "/classroom", label: "Classroom", icon: School },
+  { path: "/explore", label: "Calendario", icon: Compass },
+  { path: "/profile", label: "Perfil", icon: User },
+];
+
+export default function Layout({ children, onLogout }: LayoutProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isProfileView = location.pathname === "/profile";
 
   return (
     <div className="flex min-h-screen bg-brand-background text-brand-text-main overflow-hidden">
       {/* Sidebar - Persistent on Desktop */}
       <aside className="hidden lg:flex w-72 bg-white border-r border-brand-border flex-col p-8 space-y-10 flex-shrink-0">
-        <div className="group cursor-pointer" onClick={() => onViewChange("muro")}>
+        <div className="group cursor-pointer" onClick={() => navigate("/muro")}>
           <img src={logo} alt="Logo" className="w-10 h-10 object-contain transition-transform group-hover:scale-110" />
         </div>
 
         <nav className="flex-1 space-y-3">
-          {[
-            { id: "muro", label: "Comunidad", icon: <MessageSquare size={20} /> },
-            { id: "classroom", label: "Aula Virtual", icon: <School size={20} /> },
-            { id: "explore", label: "Explorar", icon: <Compass size={20} /> },
-            { id: "profile", label: "Mi Perfil", icon: <User size={20} /> },
-            { id: "admin", label: "Admin", icon: <Shield size={20} /> },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onViewChange(item.id as View)}
-              className={`w-full flex items-center space-x-4 p-4 rounded-2xl font-semibold transition-all ${
-                activeView === item.id
-                  ? "bg-indigo-50 text-brand-primary shadow-sm"
-                  : "text-brand-text-muted hover:bg-slate-50 hover:text-brand-text-main"
-              }`}
+          {desktopNav.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `flex items-center space-x-4 p-4 rounded-2xl font-semibold transition-all ${
+                  isActive
+                    ? "bg-indigo-50 text-brand-primary shadow-sm"
+                    : "text-brand-text-muted hover:bg-slate-50 hover:text-brand-text-main"
+                }`
+              }
             >
               {item.icon}
               <span>{item.label}</span>
-            </button>
+            </NavLink>
           ))}
         </nav>
 
@@ -49,7 +61,7 @@ export default function Layout({ children, activeView, onViewChange, onLogout }:
           <div className="flex items-center gap-2 mb-6">
             <div
               className="flex-1 flex items-center space-x-4 p-2 rounded-2xl hover:bg-slate-50 transition-colors cursor-pointer min-w-0"
-              onClick={() => onViewChange("profile")}
+              onClick={() => navigate("/profile")}
             >
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 border-2 border-white shadow-md overflow-hidden flex-shrink-0">
                 {user?.avatar ? (
@@ -87,7 +99,7 @@ export default function Layout({ children, activeView, onViewChange, onLogout }:
             src={logo}
             alt="Logo"
             className="w-8 h-8 object-contain cursor-pointer"
-            onClick={() => onViewChange("muro")}
+            onClick={() => navigate("/muro")}
           />
           <div className="flex items-center gap-2">
             <button className="p-2 text-brand-text-muted hover:bg-slate-100 rounded-full">
@@ -107,11 +119,7 @@ export default function Layout({ children, activeView, onViewChange, onLogout }:
 
         {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto w-full pb-24 lg:pb-0">
-          <div
-            className={`max-w-7xl mx-auto space-y-8 ${
-              activeView === "profile" ? "p-0 md:p-8" : "p-4 md:p-8"
-            }`}
-          >
+          <div className={`max-w-7xl mx-auto space-y-8 ${isProfileView ? "p-0 md:p-8" : "p-4 md:p-8"}`}>
             {children}
           </div>
         </main>
@@ -120,36 +128,35 @@ export default function Layout({ children, activeView, onViewChange, onLogout }:
       {/* Mobile Bottom Navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-brand-border px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-50 shadow-[0_-4px_24px_rgba(15,23,42,0.06)]">
         <div className="flex items-end justify-around max-w-lg mx-auto">
-          {[
-            { id: "muro", label: "Home", icon: MessageSquare },
-            { id: "classroom", label: "Classroom", icon: School },
-            { id: "explore", label: "Calendario", icon: Compass },
-            { id: "profile", label: "Perfil", icon: User },
-          ].map((item) => {
-            const isActive = activeView === item.id;
+          {mobileNav.map((item) => {
             const Icon = item.icon;
             return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onViewChange(item.id as View)}
-                className={`flex flex-col items-center gap-1 min-w-[4.5rem] py-1 transition-all ${
-                  isActive ? "text-orange-600" : "text-slate-400"
-                }`}
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `flex flex-col items-center gap-1 min-w-[4.5rem] py-1 transition-all ${
+                    isActive ? "text-orange-600" : "text-slate-400"
+                  }`
+                }
               >
-                <span
-                  className={`flex items-center justify-center rounded-full transition-all ${
-                    isActive
-                      ? "w-12 h-12 bg-orange-500 text-white shadow-lg shadow-orange-200/70 -mt-3"
-                      : "w-10 h-10"
-                  }`}
-                >
-                  <Icon size={isActive ? 22 : 20} strokeWidth={isActive ? 2.5 : 2} />
-                </span>
-                <span className={`text-[10px] font-bold ${isActive ? "text-orange-600" : "text-slate-400"}`}>
-                  {item.label}
-                </span>
-              </button>
+                {({ isActive }) => (
+                  <>
+                    <span
+                      className={`flex items-center justify-center rounded-full transition-all ${
+                        isActive
+                          ? "w-12 h-12 bg-orange-500 text-white shadow-lg shadow-orange-200/70 -mt-3"
+                          : "w-10 h-10"
+                      }`}
+                    >
+                      <Icon size={isActive ? 22 : 20} strokeWidth={isActive ? 2.5 : 2} />
+                    </span>
+                    <span className={`text-[10px] font-bold ${isActive ? "text-orange-600" : "text-slate-400"}`}>
+                      {item.label}
+                    </span>
+                  </>
+                )}
+              </NavLink>
             );
           })}
         </div>
