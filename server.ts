@@ -5,10 +5,10 @@ dotenv.config({ path: ".env.local", override: true });
 
 import "express-async-errors";
 import express from "express";
-import authRouter from "./routes/auth";
-import postsRouter from "./routes/posts";
-import coursesRouter from "./routes/courses";
-import tagsRouter from "./routes/tags";
+import authRouter from "./routes/auth.js";
+import postsRouter from "./routes/posts.js";
+import coursesRouter from "./routes/courses.js";
+import tagsRouter from "./routes/tags.js";
 
 const app = express();
 
