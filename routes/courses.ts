@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { isSupabaseConfigured, supabaseConfigError } from "../lib/env";
-import { getSupabase } from "../lib/supabase";
+import { isSupabaseConfigured, supabaseConfigError } from "../lib/env.js";
+import { getSupabase } from "../lib/supabase.js";
 
 const router = Router();
 
