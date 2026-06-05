@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Send, Tag, Plus, X, ImagePlus } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
+import { useApiFetch } from "../../../lib/api";
 import { requireAdmin } from "../../../lib/permissions";
-import { API_BASE } from "../../../lib/api";
 
 interface CreatePostProps {
   onSubmit: (content: string, tagIds: string[], imageData?: string) => void;
@@ -20,10 +20,11 @@ export default function CreatePost({ onSubmit }: CreatePostProps) {
   const [imageData, setImageData] = useState<string | undefined>();
   const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
+  const api = useApiFetch();
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/tags`).then((r) => r.json()).then(setAllTags).catch(() => {});
-  }, []);
+    api<TagOption[]>("/api/tags").then(({ data }) => setAllTags(data)).catch(() => {});
+  }, [api]);
 
   const toggleTag = (id: string) =>
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -33,17 +34,16 @@ export default function CreatePost({ onSubmit }: CreatePostProps) {
     if (!requireAdmin(user?.role, "crear etiquetas")) return;
     setCreatingTag(true);
     try {
-      const res = await fetch(`${API_BASE}/api/tags`, {
+      const { data: tag } = await api<TagOption>("/api/tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newTag.trim() }),
       });
-      if (res.ok) {
-        const tag: TagOption = await res.json();
-        setAllTags((prev) => prev.find((t) => t.id === tag.id) ? prev : [...prev, tag].sort((a, b) => a.name.localeCompare(b.name)));
-        setSelectedIds((prev) => prev.includes(tag.id) ? prev : [...prev, tag.id]);
-        setNewTag("");
-      }
+      setAllTags((prev) => prev.find((t) => t.id === tag.id) ? prev : [...prev, tag].sort((a, b) => a.name.localeCompare(b.name)));
+      setSelectedIds((prev) => prev.includes(tag.id) ? prev : [...prev, tag.id]);
+      setNewTag("");
+    } catch (err) {
+      console.error("[handleCreateTag]", err);
     } finally {
       setCreatingTag(false);
     }
@@ -137,7 +137,6 @@ export default function CreatePost({ onSubmit }: CreatePostProps) {
         <div className="px-6 pb-5 border-t border-slate-50 pt-4">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Agregar tags</p>
 
-          {/* Input crear nuevo tag */}
           <div className="flex gap-2 mb-3">
             <input
               value={newTag}
@@ -171,9 +170,13 @@ export default function CreatePost({ onSubmit }: CreatePostProps) {
                 <button
                   onClick={async () => {
                     if (!requireAdmin(user?.role, "eliminar etiquetas")) return;
-                    await fetch(`${API_BASE}/api/tags/${tag.id}`, { method: "DELETE" });
-                    setAllTags((prev) => prev.filter((t) => t.id !== tag.id));
-                    setSelectedIds((prev) => prev.filter((id) => id !== tag.id));
+                    try {
+                      await api(`/api/tags/${tag.id}`, { method: "DELETE" });
+                      setAllTags((prev) => prev.filter((t) => t.id !== tag.id));
+                      setSelectedIds((prev) => prev.filter((id) => id !== tag.id));
+                    } catch (err) {
+                      console.error("[deleteTag]", err);
+                    }
                   }}
                   className="ml-0.5 hover:opacity-70 transition-opacity"
                   title="Eliminar tag"

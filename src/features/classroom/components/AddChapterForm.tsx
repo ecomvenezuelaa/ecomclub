@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Plus } from "lucide-react";
-import { apiFetch } from "../../../lib/api";
+import { useApiFetch } from "../../../lib/api";
 import { useAuth } from "../../../context/AuthContext";
 import { isAdmin } from "../../../lib/permissions";
 
@@ -11,6 +11,7 @@ interface AddChapterFormProps {
 
 export default function AddChapterForm({ courseId, onAdded }: AddChapterFormProps) {
   const { user } = useAuth();
+  const api = useApiFetch();
   const [title, setTitle] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [duration, setDuration] = useState("");
@@ -29,7 +30,7 @@ export default function AddChapterForm({ courseId, onAdded }: AddChapterFormProp
     setError(null);
 
     try {
-      await apiFetch(`/api/courses/${courseId}/chapters`, {
+      await api(`/api/courses/${courseId}/chapters`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Comment } from "../../../types";
 import { useAuth } from "../../../context/AuthContext";
-import { API_BASE } from "../../../lib/api";
+import { useApiFetch } from "../../../lib/api";
 
 function countAllComments(comments: Comment[]): number {
   return comments.reduce((acc, c) => acc + 1 + countAllComments(c.replies ?? []), 0);
@@ -33,21 +33,19 @@ export function useComments(postId: string) {
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useAuth();
+  const api = useApiFetch();
 
   const fetchComments = useCallback(async () => {
     setIsLoading(true);
     try {
-      const params = user ? `?userId=${user.id}` : "";
-      const res = await fetch(`${API_BASE}/api/posts/${postId}/comments${params}`);
-      if (!res.ok) throw new Error("Error al cargar comentarios");
-      const data = await res.json();
+      const { data } = await api<Comment[]>(`/api/posts/${postId}/comments`);
       setComments(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
     } finally {
       setIsLoading(false);
     }
-  }, [postId, user]);
+  }, [postId, api]);
 
   const toggle = useCallback(() => {
     setIsOpen((prev) => {
@@ -58,30 +56,33 @@ export function useComments(postId: string) {
 
   const addComment = useCallback(async (content: string, parentId?: string): Promise<boolean> => {
     if (!user) return false;
-    const res = await fetch(`${API_BASE}/api/posts/${postId}/comments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, userId: user.id, parentId: parentId ?? null }),
-    });
-    if (!res.ok) return false;
-    const newComment: Comment = await res.json();
-    setComments((prev) =>
-      parentId ? insertReply(prev, parentId, newComment) : [...prev, newComment]
-    );
-    return true;
-  }, [postId, user]);
+    try {
+      const { data: newComment } = await api<Comment>(`/api/posts/${postId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, parentId: parentId ?? null }),
+      });
+      setComments((prev) =>
+        parentId ? insertReply(prev, parentId, newComment) : [...prev, newComment]
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }, [postId, user, api]);
 
   const reactToComment = useCallback(async (postId: string, commentId: string, reactionType: string): Promise<void> => {
     if (!user) return;
-    const res = await fetch(`${API_BASE}/api/posts/${postId}/comments/${commentId}/react`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id, reactionType }),
-    });
-    if (!res.ok) return;
-    const { reactions, userReaction } = await res.json();
-    setComments((prev) => updateReactionInTree(prev, commentId, reactions, userReaction));
-  }, [user]);
+    try {
+      const { data } = await api<{ reactions: Record<string, number>; userReaction: string | null }>(
+        `/api/posts/${postId}/comments/${commentId}/react`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reactionType }) }
+      );
+      setComments((prev) => updateReactionInTree(prev, commentId, data.reactions, data.userReaction));
+    } catch (err) {
+      console.error("[reactToComment]", err);
+    }
+  }, [user, api]);
 
   const totalCount = countAllComments(comments);
 

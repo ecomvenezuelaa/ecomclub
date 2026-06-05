@@ -1,12 +1,13 @@
+import { useCallback } from "react";
+import { useAuth } from "../context/AuthContext";
+
 export const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 
 export async function parseApiResponse<T = unknown>(res: Response): Promise<T> {
   const text = await res.text();
 
   if (!text) {
-    if (!res.ok) {
-      throw new Error(`Error del servidor (${res.status})`);
-    }
+    if (!res.ok) throw new Error(`Error del servidor (${res.status})`);
     return {} as T;
   }
 
@@ -26,16 +27,22 @@ export async function parseApiResponse<T = unknown>(res: Response): Promise<T> {
 
 export async function apiFetch<T = unknown>(
   input: RequestInfo | URL,
-  init?: RequestInit
+  init?: RequestInit,
+  token?: string
 ): Promise<{ data: T; res: Response }> {
   const url =
     typeof input === "string" && input.startsWith("/")
       ? `${API_BASE}${input}`
       : input;
 
+  const headers = new Headers(init?.headers);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
   let res: Response;
   try {
-    res = await fetch(url, init);
+    res = await fetch(url, { ...init, headers });
   } catch {
     throw new Error("No se pudo conectar con el servidor.");
   }
@@ -49,4 +56,21 @@ export async function apiFetch<T = unknown>(
   }
 
   return { data, res };
+}
+
+/**
+ * Hook que devuelve una versión de apiFetch con el token del usuario
+ * autenticado inyectado automáticamente en cada llamada.
+ *
+ * Uso:
+ *   const api = useApiFetch();
+ *   const { data } = await api<Post[]>("/api/posts");
+ */
+export function useApiFetch() {
+  const { token } = useAuth();
+  return useCallback(
+    <T = unknown>(input: RequestInfo | URL, init?: RequestInit) =>
+      apiFetch<T>(input, init, token ?? undefined),
+    [token]
+  );
 }

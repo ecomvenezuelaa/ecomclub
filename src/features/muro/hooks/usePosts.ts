@@ -1,20 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Post } from "../../../types";
 import { useAuth } from "../../../context/AuthContext";
-import { API_BASE } from "../../../lib/api";
+import { useApiFetch } from "../../../lib/api";
 
 const PAGE_SIZE = 10;
 
-async function fetchPage(userId?: string, cursor?: string, tags: string[] = []): Promise<{ posts: Post[]; nextCursor: string | null }> {
+type Api = ReturnType<typeof useApiFetch>;
+
+async function fetchPage(
+  api: Api,
+  cursor?: string,
+  tags: string[] = []
+): Promise<{ posts: Post[]; nextCursor: string | null }> {
   const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
   if (cursor) params.set("cursor", cursor);
-  if (userId) params.set("userId", userId);
   if (tags.length > 0) params.set("tags", tags.join(","));
-  const res = await fetch(`${API_BASE}/api/posts?${params}`);
-  if (!res.ok) throw new Error("Error al cargar posts");
-  const data = await res.json();
-  if (Array.isArray(data)) return { posts: data, nextCursor: null };
-  return { posts: data.posts ?? [], nextCursor: data.nextCursor ?? null };
+  const { data } = await api<{ posts: Post[]; nextCursor: string | null }>(`/api/posts?${params}`);
+  if (Array.isArray(data)) return { posts: data as Post[], nextCursor: null };
+  return { posts: (data as any).posts ?? [], nextCursor: (data as any).nextCursor ?? null };
 }
 
 export function usePosts(selectedTags: string[] = []) {
@@ -24,11 +27,11 @@ export function usePosts(selectedTags: string[] = []) {
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const { user } = useAuth();
+  const api = useApiFetch();
   const likeTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const pendingToggles = useRef(new Map<string, number>());
 
   useEffect(() => {
-    // No fetchear hasta tener el userId — evita que posts carguen sin userHasLiked correcto
     if (!user?.id) {
       setIsLoading(false);
       return;
@@ -41,7 +44,7 @@ export function usePosts(selectedTags: string[] = []) {
     setHasMore(true);
     setIsLoading(true);
 
-    fetchPage(user.id, undefined, selectedTags)
+    fetchPage(api, undefined, selectedTags)
       .then(({ posts, nextCursor }) => {
         if (cancelled) return;
         setPosts(posts);
@@ -52,13 +55,13 @@ export function usePosts(selectedTags: string[] = []) {
       .finally(() => { if (!cancelled) setIsLoading(false); });
 
     return () => { cancelled = true; };
-  }, [user?.id, selectedTags.join(",")]);
+  }, [user?.id, selectedTags.join(","), api]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || isLoadingMore || !cursor || !user?.id) return;
     setIsLoadingMore(true);
     try {
-      const { posts: more, nextCursor } = await fetchPage(user.id, cursor, selectedTags);
+      const { posts: more, nextCursor } = await fetchPage(api, cursor, selectedTags);
       setPosts((prev) => [...prev, ...more]);
       setCursor(nextCursor);
       setHasMore(nextCursor !== null);
@@ -67,22 +70,24 @@ export function usePosts(selectedTags: string[] = []) {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [hasMore, isLoadingMore, cursor, user?.id]);
+  }, [hasMore, isLoadingMore, cursor, user?.id, api]);
 
   const createPost = useCallback(async (content: string, tagIds: string[] = [], imageData?: string) => {
     if (!user) return;
-    const res = await fetch(`${API_BASE}/api/posts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, userId: user.id, tagIds, imageData }),
-    });
-    if (!res.ok) return;
-    const newPost: Post = await res.json();
-    setPosts((prev) => {
-      const updated = [newPost, ...prev];
-      return [...updated.filter((p) => p.pinned), ...updated.filter((p) => !p.pinned)];
-    });
-  }, [user]);
+    try {
+      const { data: newPost } = await api<Post>("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, tagIds, imageData }),
+      });
+      setPosts((prev) => {
+        const updated = [newPost, ...prev];
+        return [...updated.filter((p) => p.pinned), ...updated.filter((p) => !p.pinned)];
+      });
+    } catch (err) {
+      console.error("[createPost]", err);
+    }
+  }, [user, api]);
 
   const reactToPost = useCallback(async (postId: string, reactionType: string) => {
     if (!user) return;
@@ -100,61 +105,60 @@ export function usePosts(selectedTags: string[] = []) {
       return { ...p, reactions, userReaction, likes };
     }));
 
-    // Confirmar con el servidor
-    const res = await fetch(`${API_BASE}/api/posts/${postId}/react`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id, reactionType }),
-    });
-    if (!res.ok) return;
-    const { reactions, userReaction } = await res.json();
-    const total = Object.values(reactions as Record<string, number>).reduce((a, b) => a + b, 0);
-    setPosts((prev) =>
-      prev.map((p) => p.id === postId ? { ...p, reactions, userReaction, likes: total } : p)
-    );
-  }, [user]);
+    try {
+      const { data } = await api<{ reactions: Record<string, number>; userReaction: string | null }>(
+        `/api/posts/${postId}/react`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reactionType }) }
+      );
+      const total = Object.values(data.reactions).reduce((a, b) => a + b, 0);
+      setPosts((prev) =>
+        prev.map((p) => p.id === postId ? { ...p, reactions: data.reactions, userReaction: data.userReaction, likes: total } : p)
+      );
+    } catch (err) {
+      console.error("[reactToPost]", err);
+    }
+  }, [user, api]);
 
   const deletePost = useCallback(async (postId: string) => {
     if (!user) return;
-    const res = await fetch(`${API_BASE}/api/posts/${postId}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id }),
-    });
-    if (res.ok) setPosts((prev) => prev.filter((p) => p.id !== postId));
-  }, [user]);
+    try {
+      await api(`/api/posts/${postId}`, { method: "DELETE" });
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+    } catch (err) {
+      console.error("[deletePost]", err);
+    }
+  }, [user, api]);
 
   const editPost = useCallback(async (postId: string, content: string, imageData?: string, removeImage?: boolean, tagIds?: string[]) => {
     if (!user) return;
-    const res = await fetch(`${API_BASE}/api/posts/${postId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id, content, imageData, removeImage, tagIds }),
-    });
-    if (!res.ok) return;
-    const { image_url, tags } = await res.json();
-    setPosts((prev) => prev.map((p) => p.id === postId ? {
-      ...p,
-      content,
-      image_url: image_url !== undefined ? image_url : p.image_url,
-      tags: tags !== undefined ? tags : p.tags,
-    } : p));
-  }, [user]);
+    try {
+      const { data } = await api<{ image_url?: string; tags?: string[] }>(
+        `/api/posts/${postId}`,
+        { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, imageData, removeImage, tagIds }) }
+      );
+      setPosts((prev) => prev.map((p) => p.id === postId ? {
+        ...p,
+        content,
+        image_url: data.image_url !== undefined ? data.image_url : p.image_url,
+        tags: data.tags !== undefined ? data.tags : p.tags,
+      } : p));
+    } catch (err) {
+      console.error("[editPost]", err);
+    }
+  }, [user, api]);
 
   const pinPost = useCallback(async (postId: string) => {
     if (!user) return;
-    const res = await fetch(`${API_BASE}/api/posts/${postId}/pin`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id }),
-    });
-    if (!res.ok) return;
-    const { pinned } = await res.json();
-    setPosts((prev) => {
-      const updated = prev.map((p) => p.id === postId ? { ...p, pinned } : p);
-      return [...updated.filter((p) => p.pinned), ...updated.filter((p) => !p.pinned)];
-    });
-  }, [user]);
+    try {
+      const { data } = await api<{ pinned: boolean }>(`/api/posts/${postId}/pin`, { method: "POST" });
+      setPosts((prev) => {
+        const updated = prev.map((p) => p.id === postId ? { ...p, pinned: data.pinned } : p);
+        return [...updated.filter((p) => p.pinned), ...updated.filter((p) => !p.pinned)];
+      });
+    } catch (err) {
+      console.error("[pinPost]", err);
+    }
+  }, [user, api]);
 
   const incrementCommentCount = useCallback((postId: string) => {
     setPosts((prev) =>

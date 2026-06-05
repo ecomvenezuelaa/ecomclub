@@ -6,7 +6,7 @@ import { useComments } from "../hooks/useComments";
 import CommentSection from "./CommentSection";
 import { useAuth } from "../../../context/AuthContext";
 import { requireAdmin } from "../../../lib/permissions";
-import { API_BASE } from "../../../lib/api";
+import { useApiFetch } from "../../../lib/api";
 
 const REACTIONS = [
   { type: "like",  emoji: "👍" },
@@ -39,6 +39,7 @@ interface PostCardProps {
 
 export default function PostCard({ post, index, onReact, onDelete, onEdit, onPin, onCommentAdded }: PostCardProps) {
   const { user } = useAuth();
+  const api = useApiFetch();
   const { comments, totalCount, isLoading: commentsLoading, isOpen, toggle, addComment, reactToComment } = useComments(post.id);
   const [showPicker, setShowPicker] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -78,8 +79,10 @@ export default function PostCard({ post, index, onReact, onDelete, onEdit, onPin
   const handleReactorsHover = async () => {
     setShowTooltip(true);
     if (reactors !== null) return;
-    const res = await fetch(`${API_BASE}/api/posts/${post.id}/reactions`);
-    if (res.ok) setReactors(await res.json());
+    try {
+      const { data } = await api<typeof reactors>(`/api/posts/${post.id}/reactions`);
+      setReactors(data);
+    } catch {}
   };
 
   const startEditing = async () => {
@@ -88,9 +91,8 @@ export default function PostCard({ post, index, onReact, onDelete, onEdit, onPin
     setEditImageData(undefined);
     setRemoveImage(false);
     setEditing(true);
-    fetch(`${API_BASE}/api/tags`)
-      .then((r) => r.json())
-      .then((tags: TagOption[]) => {
+    api<TagOption[]>("/api/tags")
+      .then(({ data: tags }) => {
         setEditTags(tags);
         setSelectedTagIds(tags.filter((t) => post.tags?.includes(t.name)).map((t) => t.id));
       })

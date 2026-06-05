@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
-import { API_BASE } from "../../../lib/api";
+import { useApiFetch } from "../../../lib/api";
 import ProfileHero from "./ProfileHero";
 import ProfileLevelCard from "./ProfileLevelCard";
 import ProfileStatsGrid from "./ProfileStatsGrid";
@@ -12,6 +12,7 @@ import { PROFILE_LEVEL } from "../data/profileMock";
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
+  const api = useApiFetch();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<ProfileEditForm>({
     name: user?.name || "",
@@ -43,18 +44,16 @@ export default function Profile() {
 
         setEditForm((prev) => ({ ...prev, avatar: dataUrl }));
 
-        fetch(`${API_BASE}/api/auth/avatar`, {
+        api<{ url: string }>("/api/auth/avatar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user?.id, imageData: dataUrl }),
+          body: JSON.stringify({ imageData: dataUrl }),
         })
-          .then(async (res) => {
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error ?? "Error al subir imagen");
+          .then(({ data }) => {
             if (data.url) setUploadedAvatarUrl(data.url);
             else throw new Error("URL de imagen no recibida");
           })
-          .catch((err) => {
+          .catch((err: Error) => {
             console.error("Avatar upload error:", err);
             alert("No se pudo subir la imagen: " + err.message);
           })
@@ -68,19 +67,17 @@ export default function Profile() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/profile`, {
+      const { data } = await api<{ user: typeof user }>("/api/auth/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: user?.id,
           name: editForm.name,
           avatar: uploadedAvatarUrl ?? editForm.avatar,
           bio: editForm.bio,
         }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        updateUser(data.user);
+      if (data.user) {
+        updateUser(data.user as NonNullable<typeof user>);
         setIsEditing(false);
       }
     } catch (err) {
