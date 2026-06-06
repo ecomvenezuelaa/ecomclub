@@ -9,6 +9,7 @@ import AdminDashboard from "../features/admin/AdminDashboard";
 import Landing from "../features/landing/landing";
 import Login from "../features/auth/components/Login";
 import Register from "../features/auth/components/Register";
+import InviteRegister from "../features/auth/components/InviteRegister";
 
 function AdminRoute() {
   const { user } = useAuth();
@@ -41,6 +42,11 @@ function RegisterPage() {
   return <Register onGoToLogin={() => navigate("/login")} />;
 }
 
+function InviteRegisterPage() {
+  const navigate = useNavigate();
+  return <InviteRegister onGoToLogin={() => navigate("/login")} />;
+}
+
 function ExplorePage() {
   return (
     <div className="text-center py-20">
@@ -59,6 +65,7 @@ export const authRoutes: AppRoute[] = [
   { path: "/", element: <LandingPage /> },
   { path: "/login", element: <LoginPage /> },
   { path: "/register", element: <RegisterPage /> },
+  { path: "/invite", element: <InviteRegisterPage /> },
 ];
 
 export const appRoutes: AppRoute[] = [
