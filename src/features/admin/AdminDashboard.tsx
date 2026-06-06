@@ -1,29 +1,39 @@
-import React, { useState } from "react";
-import { 
-  Users, 
-  DollarSign, 
-  TrendingUp, 
-  Activity, 
-  CreditCard, 
-  Building2, 
-  Briefcase, 
-  Save, 
-  ArrowUpRight, 
-  ArrowDownRight 
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Users,
+  DollarSign,
+  TrendingUp,
+  Activity,
+  CreditCard,
+  Building2,
+  Briefcase,
+  Save,
+  ArrowUpRight,
+  ArrowDownRight,
+  Mail,
+  Send,
+  Trash2,
+  Search,
+  RefreshCw,
+  UserPlus,
+  Clock,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
-  Cell 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell
 } from "recharts";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
+import { useApiFetch } from "../../lib/api";
 
 const revenueData = [
   { name: "Ene", value: 4000 },
@@ -45,8 +55,289 @@ const memberData = [
   { name: "Domingo", users: 349 },
 ];
 
+interface Invitation {
+  id: string;
+  email: string;
+  token: string;
+  invited_by: string;
+  expires_at: string;
+  used_at: string | null;
+  created_at: string;
+  status: "pendiente" | "usada" | "expirada";
+}
+
+type StatusFilter = "todos" | "pendiente" | "usada" | "expirada";
+
+function formatDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString("es-ES", {
+      day: "2-digit", month: "short", year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+const statusConfig = {
+  pendiente: { label: "Pendiente", icon: <Clock size={12} />, cls: "bg-amber-50 text-amber-700 border border-amber-200" },
+  usada:     { label: "Usada",     icon: <CheckCircle size={12} />, cls: "bg-green-50 text-green-700 border border-green-200" },
+  expirada:  { label: "Expirada",  icon: <XCircle size={12} />,    cls: "bg-red-50 text-red-600 border border-red-200" },
+};
+
+function InvitationsPanel() {
+  const api = useApiFetch();
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [emailInput, setEmailInput] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
+  const [searchFilter, setSearchFilter] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadInvitations = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await api<Invitation[]>("/api/invitations/");
+      setInvitations(data);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error al cargar invitaciones");
+    } finally {
+      setLoading(false);
+    }
+  }, [api]);
+
+  useEffect(() => { loadInvitations(); }, [loadInvitations]);
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!emailInput.trim()) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    setSubmitSuccess(null);
+    try {
+      await api("/api/invitations/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailInput.trim() }),
+      });
+      setSubmitSuccess(`Invitación enviada a ${emailInput.trim()}`);
+      setEmailInput("");
+      await loadInvitations();
+    } catch (e: unknown) {
+      setSubmitError(e instanceof Error ? e.message : "Error al crear invitación");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      await api(`/api/invitations/${id}`, { method: "DELETE" });
+      setInvitations((prev) => prev.filter((inv) => inv.id !== id));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error al eliminar invitación");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  const filtered = invitations.filter((inv) => {
+    const matchesStatus = statusFilter === "todos" || inv.status === statusFilter;
+    const matchesSearch = inv.email.toLowerCase().includes(searchFilter.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+
+  const counts = {
+    todos: invitations.length,
+    pendiente: invitations.filter((i) => i.status === "pendiente").length,
+    usada: invitations.filter((i) => i.status === "usada").length,
+    expirada: invitations.filter((i) => i.status === "expirada").length,
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="space-y-8"
+    >
+      {/* Invite form */}
+      <div className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm">
+        <h3 className="text-2xl font-black text-slate-900 mb-2 flex items-center gap-3">
+          <UserPlus className="text-indigo-600" /> Enviar Invitación
+        </h3>
+        <p className="text-slate-500 font-medium mb-8">
+          Ingresa el email de la persona que deseas invitar a la comunidad.
+        </p>
+        <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-4 max-w-xl">
+          <div className="relative flex-1">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input
+              type="email"
+              required
+              placeholder="nombre@email.com"
+              value={emailInput}
+              onChange={(e) => { setEmailInput(e.target.value); setSubmitError(null); setSubmitSuccess(null); }}
+              className="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-2xl py-4 pl-12 pr-4 text-sm font-bold transition-all outline-none"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-3 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 disabled:opacity-60 whitespace-nowrap"
+          >
+            {submitting ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+            Invitar
+          </button>
+        </form>
+        <AnimatePresence>
+          {submitError && (
+            <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="mt-4 text-red-600 text-sm font-bold flex items-center gap-2">
+              <XCircle size={16} /> {submitError}
+            </motion.p>
+          )}
+          {submitSuccess && (
+            <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="mt-4 text-green-600 text-sm font-bold flex items-center gap-2">
+              <CheckCircle size={16} /> {submitSuccess}
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Invitations list */}
+      <div className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+              <Mail className="text-indigo-600" /> Lista de Invitados
+            </h3>
+            <p className="text-slate-500 font-medium mt-1">{invitations.length} invitaciones en total</p>
+          </div>
+          <button onClick={loadInvitations} disabled={loading}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl border-2 border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50">
+            <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Actualizar
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          {/* Search */}
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              placeholder="Buscar por email..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-2xl py-3 pl-11 pr-4 text-sm font-bold transition-all outline-none"
+            />
+          </div>
+          {/* Status tabs */}
+          <div className="flex bg-slate-100 p-1 rounded-2xl w-fit h-fit">
+            {(["todos", "pendiente", "usada", "expirada"] as StatusFilter[]).map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all capitalize ${statusFilter === s ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                {s === "todos" ? "Todos" : s.charAt(0).toUpperCase() + s.slice(1)}
+                <span className={`ml-1.5 text-[10px] ${statusFilter === s ? "text-indigo-400" : "text-slate-400"}`}>
+                  ({counts[s]})
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm font-bold rounded-2xl px-5 py-4 mb-4 flex items-center gap-2">
+            <XCircle size={16} /> {error}
+          </div>
+        )}
+
+        {/* Table */}
+        {loading && invitations.length === 0 ? (
+          <div className="flex justify-center items-center py-16 text-slate-400">
+            <RefreshCw size={24} className="animate-spin mr-3" />
+            <span className="font-bold">Cargando invitaciones...</span>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 text-slate-400">
+            <Mail size={40} className="mx-auto mb-4 opacity-30" />
+            <p className="font-bold">No hay invitaciones{statusFilter !== "todos" ? ` con estado "${statusFilter}"` : ""}{searchFilter ? ` para "${searchFilter}"` : ""}.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pr-4">Email</th>
+                  <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pr-4">Estado</th>
+                  <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pr-4">Creada</th>
+                  <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pr-4">Expira</th>
+                  <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4">Usada el</th>
+                  <th className="pb-4" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                <AnimatePresence initial={false}>
+                  {filtered.map((inv) => {
+                    const sc = statusConfig[inv.status];
+                    return (
+                      <motion.tr
+                        key={inv.id}
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        className="group"
+                      >
+                        <td className="py-4 pr-4">
+                          <span className="font-bold text-sm text-slate-800">{inv.email}</span>
+                        </td>
+                        <td className="py-4 pr-4">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black ${sc.cls}`}>
+                            {sc.icon} {sc.label}
+                          </span>
+                        </td>
+                        <td className="py-4 pr-4 text-sm font-bold text-slate-500">{formatDate(inv.created_at)}</td>
+                        <td className="py-4 pr-4 text-sm font-bold text-slate-500">{formatDate(inv.expires_at)}</td>
+                        <td className="py-4 text-sm font-bold text-slate-500">
+                          {inv.used_at ? formatDate(inv.used_at) : <span className="text-slate-300">—</span>}
+                        </td>
+                        <td className="py-4 pl-4">
+                          <button
+                            onClick={() => handleDelete(inv.id)}
+                            disabled={deletingId === inv.id}
+                            className="p-2.5 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-40"
+                            title="Eliminar invitación"
+                          >
+                            {deletingId === inv.id
+                              ? <RefreshCw size={15} className="animate-spin" />
+                              : <Trash2 size={15} />}
+                          </button>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"stats" | "settings">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "settings" | "invitaciones">("stats");
   const [bankInfo, setBankInfo] = useState({
     accountHolder: "Sarah Jenkins",
     bankName: "Global Bank",
@@ -70,13 +361,19 @@ export default function AdminDashboard() {
           <p className="text-slate-500 font-medium">Gestiona tu comunidad y finanzas desde un solo lugar.</p>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-2xl w-fit">
-          <button 
+          <button
             onClick={() => setActiveTab("stats")}
             className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'stats' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
             Estadísticas
           </button>
-          <button 
+          <button
+            onClick={() => setActiveTab("invitaciones")}
+            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'invitaciones' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Invitaciones
+          </button>
+          <button
             onClick={() => setActiveTab("settings")}
             className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'settings' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
@@ -85,12 +382,12 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {activeTab === "stats" ? (
+      {activeTab === "stats" && (
         <div className="space-y-8">
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat, i) => (
-              <motion.div 
+              <motion.div
                 key={stat.label}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -126,33 +423,33 @@ export default function AdminDashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
                       tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 700 }}
                       dy={10}
                     />
-                    <YAxis 
-                      axisLine={false} 
-                      tickLine={false} 
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
                       tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 700 }}
                     />
-                    <Tooltip 
-                      contentStyle={{ 
-                        borderRadius: '16px', 
-                        border: 'none', 
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: '16px',
+                        border: 'none',
                         boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
                         fontWeight: 'bold'
                       }}
                     />
-                    <Area 
-                      type="monotone" 
-                      dataKey="value" 
-                      stroke="#4f46e5" 
+                    <Area
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#4f46e5"
                       strokeWidth={4}
-                      fillOpacity={1} 
-                      fill="url(#colorValue)" 
+                      fillOpacity={1}
+                      fill="url(#colorValue)"
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -171,7 +468,7 @@ export default function AdminDashboard() {
                         <Cell key={`cell-${index}`} fill={index % 2 === 0 ? "#6366f1" : "#4f46e5"} />
                       ))}
                     </Bar>
-                    <Tooltip 
+                    <Tooltip
                       cursor={{fill: 'transparent'}}
                       contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '12px', color: '#fff' }}
                       itemStyle={{ color: '#fff' }}
@@ -196,8 +493,12 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
-      ) : (
-        <motion.div 
+      )}
+
+      {activeTab === "invitaciones" && <InvitationsPanel />}
+
+      {activeTab === "settings" && (
+        <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           className="grid grid-cols-1 md:grid-cols-12 gap-8"
@@ -208,14 +509,14 @@ export default function AdminDashboard() {
               <CreditCard className="text-indigo-600" /> Información Bancaria
             </h3>
             <p className="text-slate-500 font-medium mb-10">Gestiona dónde recibes tus pagos y revisa tu estado de cuenta.</p>
-            
+
             <form className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Titular de la Cuenta</label>
                 <div className="relative">
                   <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={bankInfo.accountHolder}
                     onChange={(e) => setBankInfo({...bankInfo, accountHolder: e.target.value})}
                     className="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-2xl py-4 pl-12 pr-4 text-sm font-bold transition-all outline-none"
@@ -227,8 +528,8 @@ export default function AdminDashboard() {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nombre del Banco</label>
                 <div className="relative">
                   <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={bankInfo.bankName}
                     onChange={(e) => setBankInfo({...bankInfo, bankName: e.target.value})}
                     className="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-2xl py-4 pl-12 pr-4 text-sm font-bold transition-all outline-none"
@@ -240,8 +541,8 @@ export default function AdminDashboard() {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Número de Cuenta</label>
                 <div className="relative">
                   <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={bankInfo.accountNumber}
                     onChange={(e) => setBankInfo({...bankInfo, accountNumber: e.target.value})}
                     className="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-2xl py-4 pl-12 pr-4 text-sm font-bold transition-all outline-none"
@@ -253,8 +554,8 @@ export default function AdminDashboard() {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Número de Ruta (SWIFT)</label>
                 <div className="relative">
                   <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={bankInfo.routingNumber}
                     onChange={(e) => setBankInfo({...bankInfo, routingNumber: e.target.value})}
                     className="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-2xl py-4 pl-12 pr-4 text-sm font-bold transition-all outline-none"
@@ -263,7 +564,7 @@ export default function AdminDashboard() {
               </div>
 
               <div className="md:col-span-2 pt-6">
-                <button 
+                <button
                   type="button"
                   className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-3 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
                 >
