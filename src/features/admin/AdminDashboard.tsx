@@ -19,6 +19,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  Copy,
+  Check,
 } from "lucide-react";
 import {
   AreaChart,
@@ -96,6 +98,7 @@ function InvitationsPanel() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
   const [searchFilter, setSearchFilter] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const loadInvitations = useCallback(async () => {
     setLoading(true);
@@ -132,6 +135,14 @@ function InvitationsPanel() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleCopy(inv: Invitation) {
+    const link = `${window.location.origin}/invite?token=${inv.token}`;
+    navigator.clipboard.writeText(link).then(() => {
+      setCopiedId(inv.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
   }
 
   async function handleDelete(id: string) {
@@ -283,6 +294,7 @@ function InvitationsPanel() {
                   <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pr-4">Creada</th>
                   <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pr-4">Expira</th>
                   <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4">Usada el</th>
+                  <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pl-4">Link</th>
                   <th className="pb-4" />
                 </tr>
               </thead>
@@ -312,6 +324,19 @@ function InvitationsPanel() {
                           {inv.used_at ? formatDate(inv.used_at) : <span className="text-slate-300">—</span>}
                         </td>
                         <td className="py-4 pl-4">
+                          {inv.status === "pendiente" ? (
+                            <button
+                              onClick={() => handleCopy(inv)}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all border ${copiedId === inv.id ? "bg-green-50 text-green-600 border-green-200" : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200"}`}
+                              title="Copiar link de invitación"
+                            >
+                              {copiedId === inv.id ? <><Check size={12} /> Copiado</> : <><Copy size={12} /> Copiar link</>}
+                            </button>
+                          ) : (
+                            <span className="text-slate-300 text-sm">—</span>
+                          )}
+                        </td>
+                        <td className="py-4 pl-2">
                           <button
                             onClick={() => handleDelete(inv.id)}
                             disabled={deletingId === inv.id}
