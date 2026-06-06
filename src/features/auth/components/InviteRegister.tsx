@@ -30,20 +30,25 @@ export default function InviteRegister({ onGoToLogin }: InviteRegisterProps) {
       setValidation("invalid");
       return;
     }
-    apiFetch<{ valid: boolean; email?: string; reason?: string }>(
+    apiFetch<unknown>(
       `/api/invitations/validate?token=${token}`
     )
       .then(({ data }) => {
-        if (data.valid && data.email) {
-          setInvitedEmail(data.email);
+        // Supabase RPCs sometimes return an array instead of a single object
+        const result = (Array.isArray(data) ? data[0] : data) as { valid?: boolean; email?: string; reason?: string } | undefined;
+        console.log("[invite] validate response:", result);
+        if (result?.valid && result?.email) {
+          setInvitedEmail(result.email);
           setValidation("valid");
         } else {
-          setInvalidReason(data.reason ?? "Invitación inválida o expirada.");
+          setInvalidReason(result?.reason ?? "Invitación inválida o expirada.");
           setValidation("invalid");
         }
       })
-      .catch(() => {
-        setInvalidReason("No se pudo verificar la invitación. Intenta de nuevo.");
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : "Error desconocido";
+        console.error("[invite] validate error:", msg);
+        setInvalidReason(`No se pudo verificar la invitación: ${msg}`);
         setValidation("invalid");
       });
   }, [token]);
@@ -60,7 +65,7 @@ export default function InviteRegister({ onGoToLogin }: InviteRegisterProps) {
       const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email: invitedEmail, password, role: "Miembro" }),
+        body: JSON.stringify({ name, email: invitedEmail, password, role: "Invitado" }),
       });
       const data = await res.json();
       if (!res.ok) {
