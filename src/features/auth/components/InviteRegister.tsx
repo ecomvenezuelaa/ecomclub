@@ -72,6 +72,10 @@ export default function InviteRegister({ onGoToLogin }: InviteRegisterProps) {
         setError(data.error || data.detail || "Error al crear la cuenta");
         return;
       }
+      if (!data.user || !data.token) {
+        setError("Cuenta creada pero no se pudo iniciar sesión automáticamente. Inicia sesión manualmente.");
+        return;
+      }
       try {
         await apiFetch("/api/invitations/use", {
           method: "POST",
