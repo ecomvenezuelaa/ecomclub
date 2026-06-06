@@ -72,11 +72,15 @@ export default function InviteRegister({ onGoToLogin }: InviteRegisterProps) {
         setError(data.error || data.detail || "Error al crear la cuenta");
         return;
       }
-      await apiFetch("/api/invitations/use", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      }).catch(() => {});
+      try {
+        await apiFetch("/api/invitations/use", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+      } catch (useErr: unknown) {
+        console.error("[invite] use_token failed:", useErr instanceof Error ? useErr.message : useErr);
+      }
       login(data.user, data.token);
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
