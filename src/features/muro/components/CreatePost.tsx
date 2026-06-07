@@ -23,7 +23,7 @@ export default function CreatePost({ onSubmit }: CreatePostProps) {
   const api = useApiFetch();
 
   useEffect(() => {
-    api<TagOption[]>("/api/tags").then(({ data }) => setAllTags(data)).catch(() => {});
+    api<TagOption[]>("/api/tags/").then(({ data }) => setAllTags(data)).catch(() => {});
   }, [api]);
 
   const toggleTag = (id: string) =>
@@ -34,7 +34,7 @@ export default function CreatePost({ onSubmit }: CreatePostProps) {
     if (!requireAdmin(user?.role, "crear etiquetas")) return;
     setCreatingTag(true);
     try {
-      const { data: tag } = await api<TagOption>("/api/tags", {
+      const { data: tag } = await api<TagOption>("/api/tags/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newTag.trim() }),

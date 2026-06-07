@@ -11,7 +11,7 @@ export function useCourses() {
     setIsLoading(true);
     setError(null);
 
-    apiFetch<Course[] | { error: string }>("/api/courses")
+    apiFetch<Course[] | { error: string }>("/api/courses/")
       .then(({ data }) => {
         if (Array.isArray(data)) {
           setCourses(data);

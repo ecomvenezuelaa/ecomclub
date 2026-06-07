@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { AnimatePresence, motion } from "motion/react";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./shared/layout/Layout";
+import AccountStatus from "./features/auth/components/AccountStatus";
+import { needsActiveSubscription, hasActiveSubscription } from "./lib/permissions";
 import { authRoutes, appRoutes, AppRoute } from "./routes";
 
 function AnimatedRoutes({ routes, fallback }: { routes: AppRoute[]; fallback: string }) {
@@ -28,10 +30,14 @@ function AnimatedRoutes({ routes, fallback }: { routes: AppRoute[]; fallback: st
 }
 
 function AppContent() {
-  const { isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
 
   if (!isAuthenticated) {
     return <AnimatedRoutes routes={authRoutes} fallback="/" />;
+  }
+
+  if (needsActiveSubscription(user?.role) && !hasActiveSubscription(user?.subscription_status)) {
+    return <AccountStatus />;
   }
 
   return (

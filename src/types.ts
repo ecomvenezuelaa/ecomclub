@@ -40,6 +40,27 @@ export interface CourseChapter {
 
 export type View = "muro" | "classroom" | "profile" | "explore" | "admin";
 
+export type PlanType = "1m" | "3m" | "6m" | "1y" | "indefinido";
+
+export type PaymentStatus = "pending" | "success" | "failed";
+
+export interface Payment {
+  id: string;
+  user_id: string;
+  plan: PlanType;
+  amount: number;
+  status: PaymentStatus;
+  payment_method: string;
+  reference_number: string;
+  receipt_url: string | null;
+  phone: string;
+  paid_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+  user_name?: string | null;
+  user_email?: string | null;
+}
+
 export interface Comment {
   id: string;
   post_id: string;

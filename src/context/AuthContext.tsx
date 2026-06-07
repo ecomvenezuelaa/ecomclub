@@ -7,6 +7,7 @@ export interface User {
   role: string;
   avatar: string;
   bio?: string;
+  subscription_status?: string | null;
 }
 
 interface AuthContextType {

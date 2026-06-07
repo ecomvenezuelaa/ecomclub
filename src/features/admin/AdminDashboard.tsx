@@ -21,6 +21,10 @@ import {
   XCircle,
   Copy,
   Check,
+  Eye,
+  ThumbsUp,
+  ThumbsDown,
+  Banknote,
 } from "lucide-react";
 import {
   AreaChart,
@@ -36,6 +40,7 @@ import {
 } from "recharts";
 import { motion, AnimatePresence } from "motion/react";
 import { useApiFetch } from "../../lib/api";
+import type { Payment, PlanType } from "../../types";
 
 const revenueData = [
   { name: "Ene", value: 4000 },
@@ -361,8 +366,266 @@ function InvitationsPanel() {
   );
 }
 
+type PaymentStatusFilter = "todos" | "pending" | "success" | "failed";
+
+const PLAN_LABELS: Record<PlanType, string> = {
+  "1m": "1 mes",
+  "3m": "3 meses",
+  "6m": "6 meses",
+  "1y": "1 año",
+  indefinido: "Indefinido",
+};
+
+const paymentStatusConfig: Record<Exclude<PaymentStatusFilter, "todos">, { label: string; icon: React.ReactNode; cls: string }> = {
+  pending: { label: "Pendiente", icon: <Clock size={12} />, cls: "bg-amber-50 text-amber-700 border border-amber-200" },
+  success: { label: "Aprobado", icon: <CheckCircle size={12} />, cls: "bg-green-50 text-green-700 border border-green-200" },
+  failed:  { label: "Rechazado", icon: <XCircle size={12} />, cls: "bg-red-50 text-red-600 border border-red-200" },
+};
+
+function formatAmount(amount: number) {
+  try {
+    return new Intl.NumberFormat("es-ES", { style: "currency", currency: "USD" }).format(amount);
+  } catch {
+    return `$${amount}`;
+  }
+}
+
+function PaymentsPanel() {
+  const api = useApiFetch();
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<PaymentStatusFilter>("todos");
+  const [searchFilter, setSearchFilter] = useState("");
+  const [actioningId, setActioningId] = useState<string | null>(null);
+  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
+
+  const loadPayments = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await api<Payment[]>("/api/payments/");
+      setPayments(data);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error al cargar pagos");
+    } finally {
+      setLoading(false);
+    }
+  }, [api]);
+
+  useEffect(() => { loadPayments(); }, [loadPayments]);
+
+  async function handleApprove(id: string) {
+    setActioningId(id);
+    setError(null);
+    try {
+      const { data } = await api<Payment>(`/api/payments/${id}/approve`, { method: "PATCH" });
+      setPayments((prev) => prev.map((p) => (p.id === id ? data : p)));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error al aprobar el pago");
+    } finally {
+      setActioningId(null);
+    }
+  }
+
+  async function handleReject(id: string) {
+    setActioningId(id);
+    setError(null);
+    try {
+      const { data } = await api<Payment>(`/api/payments/${id}/reject`, { method: "PATCH" });
+      setPayments((prev) => prev.map((p) => (p.id === id ? data : p)));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error al rechazar el pago");
+    } finally {
+      setActioningId(null);
+    }
+  }
+
+  async function handleViewReceipt(id: string) {
+    setReceiptLoadingId(id);
+    setError(null);
+    try {
+      const { data } = await api<{ url: string }>(`/api/payments/${id}/receipt`);
+      window.open(data.url, "_blank", "noopener,noreferrer");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error al obtener el comprobante");
+    } finally {
+      setReceiptLoadingId(null);
+    }
+  }
+
+  const filtered = payments.filter((p) => {
+    const matchesStatus = statusFilter === "todos" || p.status === statusFilter;
+    const haystack = `${p.user_name ?? ""} ${p.user_email ?? ""} ${p.reference_number}`.toLowerCase();
+    const matchesSearch = haystack.includes(searchFilter.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+
+  const counts = {
+    todos: payments.length,
+    pending: payments.filter((p) => p.status === "pending").length,
+    success: payments.filter((p) => p.status === "success").length,
+    failed: payments.filter((p) => p.status === "failed").length,
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm"
+    >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+            <Banknote className="text-indigo-600" /> Pagos y Suscripciones
+          </h3>
+          <p className="text-slate-500 font-medium mt-1">{payments.length} pagos registrados en total</p>
+        </div>
+        <button onClick={loadPayments} disabled={loading}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl border-2 border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50">
+          <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Actualizar
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, email o referencia..."
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            className="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-2xl py-3 pl-11 pr-4 text-sm font-bold transition-all outline-none"
+          />
+        </div>
+        <div className="flex bg-slate-100 p-1 rounded-2xl w-fit h-fit overflow-x-auto">
+          {(["todos", "pending", "success", "failed"] as PaymentStatusFilter[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap ${statusFilter === s ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            >
+              {s === "todos" ? "Todos" : paymentStatusConfig[s].label}
+              <span className={`ml-1.5 text-[10px] ${statusFilter === s ? "text-indigo-400" : "text-slate-400"}`}>
+                ({counts[s]})
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-600 text-sm font-bold rounded-2xl px-5 py-4 mb-4 flex items-center gap-2">
+          <XCircle size={16} /> {error}
+        </div>
+      )}
+
+      {loading && payments.length === 0 ? (
+        <div className="flex justify-center items-center py-16 text-slate-400">
+          <RefreshCw size={24} className="animate-spin mr-3" />
+          <span className="font-bold">Cargando pagos...</span>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 text-slate-400">
+          <Banknote size={40} className="mx-auto mb-4 opacity-30" />
+          <p className="font-bold">No hay pagos{statusFilter !== "todos" ? ` con estado "${paymentStatusConfig[statusFilter].label.toLowerCase()}"` : ""}{searchFilter ? ` para "${searchFilter}"` : ""}.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-100">
+                <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pr-4">Usuario</th>
+                <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pr-4">Plan</th>
+                <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pr-4">Monto</th>
+                <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pr-4">Referencia</th>
+                <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pr-4">Estado</th>
+                <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pr-4">Enviado</th>
+                <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.12em] pb-4 pr-4">Comprobante</th>
+                <th className="pb-4" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              <AnimatePresence initial={false}>
+                {filtered.map((p) => {
+                  const sc = paymentStatusConfig[p.status];
+                  const isActioning = actioningId === p.id;
+                  return (
+                    <motion.tr
+                      key={p.id}
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      className="group"
+                    >
+                      <td className="py-4 pr-4">
+                        <p className="font-bold text-sm text-slate-800">{p.user_name ?? "—"}</p>
+                        <p className="text-xs font-medium text-slate-400">{p.user_email ?? "—"}</p>
+                      </td>
+                      <td className="py-4 pr-4 text-sm font-bold text-slate-600">{PLAN_LABELS[p.plan] ?? p.plan}</td>
+                      <td className="py-4 pr-4 text-sm font-bold text-slate-600">{formatAmount(p.amount)}</td>
+                      <td className="py-4 pr-4">
+                        <p className="text-sm font-bold text-slate-600">{p.reference_number}</p>
+                        <p className="text-xs font-medium text-slate-400">{p.payment_method}</p>
+                      </td>
+                      <td className="py-4 pr-4">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black ${sc.cls}`}>
+                          {sc.icon} {sc.label}
+                        </span>
+                      </td>
+                      <td className="py-4 pr-4 text-sm font-bold text-slate-500">{formatDate(p.created_at)}</td>
+                      <td className="py-4 pr-4">
+                        <button
+                          onClick={() => handleViewReceipt(p.id)}
+                          disabled={receiptLoadingId === p.id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-slate-50 text-slate-500 border border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all disabled:opacity-50"
+                          title="Ver comprobante"
+                        >
+                          {receiptLoadingId === p.id ? <RefreshCw size={12} className="animate-spin" /> : <Eye size={12} />}
+                          Ver
+                        </button>
+                      </td>
+                      <td className="py-4 pl-2">
+                        {p.status === "pending" ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleApprove(p.id)}
+                              disabled={isActioning}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-all disabled:opacity-40"
+                              title="Aprobar pago"
+                            >
+                              {isActioning ? <RefreshCw size={12} className="animate-spin" /> : <ThumbsUp size={12} />}
+                              Aprobar
+                            </button>
+                            <button
+                              onClick={() => handleReject(p.id)}
+                              disabled={isActioning}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-all disabled:opacity-40"
+                              title="Rechazar pago"
+                            >
+                              {isActioning ? <RefreshCw size={12} className="animate-spin" /> : <ThumbsDown size={12} />}
+                              Rechazar
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-300 text-sm">—</span>
+                        )}
+                      </td>
+                    </motion.tr>
+                  );
+                })}
+              </AnimatePresence>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"stats" | "settings" | "invitaciones">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "settings" | "invitaciones" | "pagos">("stats");
   const [bankInfo, setBankInfo] = useState({
     accountHolder: "Sarah Jenkins",
     bankName: "Global Bank",
@@ -397,6 +660,12 @@ export default function AdminDashboard() {
             className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'invitaciones' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
             Invitaciones
+          </button>
+          <button
+            onClick={() => setActiveTab("pagos")}
+            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'pagos' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Pagos
           </button>
           <button
             onClick={() => setActiveTab("settings")}
@@ -521,6 +790,8 @@ export default function AdminDashboard() {
       )}
 
       {activeTab === "invitaciones" && <InvitationsPanel />}
+
+      {activeTab === "pagos" && <PaymentsPanel />}
 
       {activeTab === "settings" && (
         <motion.div

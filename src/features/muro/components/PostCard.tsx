@@ -91,7 +91,7 @@ export default function PostCard({ post, index, onReact, onDelete, onEdit, onPin
     setEditImageData(undefined);
     setRemoveImage(false);
     setEditing(true);
-    api<TagOption[]>("/api/tags")
+    api<TagOption[]>("/api/tags/")
       .then(({ data: tags }) => {
         setEditTags(tags);
         setSelectedTagIds(tags.filter((t) => post.tags?.includes(t.name)).map((t) => t.id));

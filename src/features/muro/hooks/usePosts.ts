@@ -15,7 +15,7 @@ async function fetchPage(
   const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
   if (cursor) params.set("cursor", cursor);
   if (tags.length > 0) params.set("tags", tags.join(","));
-  const { data } = await api<{ posts: Post[]; nextCursor: string | null }>(`/api/posts?${params}`);
+  const { data } = await api<{ posts: Post[]; nextCursor: string | null }>(`/api/posts/?${params}`);
   if (Array.isArray(data)) return { posts: data as Post[], nextCursor: null };
   return { posts: (data as any).posts ?? [], nextCursor: (data as any).nextCursor ?? null };
 }
@@ -75,7 +75,7 @@ export function usePosts(selectedTags: string[] = []) {
   const createPost = useCallback(async (content: string, tagIds: string[] = [], imageData?: string) => {
     if (!user) return;
     try {
-      const { data: newPost } = await api<Post>("/api/posts", {
+      const { data: newPost } = await api<Post>("/api/posts/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content, tagIds, imageData }),

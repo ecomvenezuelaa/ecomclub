@@ -9,3 +9,15 @@ export function requireAdmin(role: string | undefined, action = "realizar esta a
   alert(`Solo los administradores pueden ${action}.`);
   return false;
 }
+
+/**
+ * Los usuarios con role='invitado' están exentos de la validación de suscripción.
+ * Cualquier otro rol necesita subscription_status='active' para usar la app.
+ */
+export function needsActiveSubscription(role: string | undefined): boolean {
+  return role !== "invitado" && role !== "admin";
+}
+
+export function hasActiveSubscription(subscriptionStatus: string | null | undefined): boolean {
+  return subscriptionStatus === "active";
+}
