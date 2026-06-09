@@ -42,15 +42,72 @@ This repo is the **frontend SPA + a thin Node.js reverse proxy**. The actual API
 - **Vercel**: `vercel.json` routes `/api/*` to `api/index.ts` (re-exports the Express app) and everything else to `index.html`.
 
 ### Python backend (separate repo)
-FastAPI app with all active API logic:
-- `/api/auth` — register, login, avatar upload, profile update, `/api/auth/me`
-- `/api/posts/` — cursor-paginated feed, reactions, comments, tags, pin/edit/delete
-- `/api/courses/` — course list + detail + chapter management
-- `/api/tags/` — tag list and creation
-- `/api/invitations/` — invite link generation and redemption
-- `/api/payments/` — payment registration, receipt upload, approve/reject, subscription status
 
-Uses a single Supabase client with the **service role key** (admin privileges). Auth is validated server-side by calling `supabase.auth.get_user(token)` on each protected request.
+FastAPI app with all active API logic. Uses a single Supabase client with the **service role key** (admin privileges). Auth is validated server-side via `supabase.auth.get_user(token)` on each protected request.
+
+Auth levels: `—` = public · `🔑` = authenticated user · `👑` = admin · `?` = optional (user info used if present)
+
+#### `/api/auth`
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/auth/register` | — | Create account + default profile |
+| POST | `/api/auth/login` | — | Sign in, returns `{ user, token }` |
+| GET | `/api/auth/me` | 🔑 | Get current user profile |
+| POST | `/api/auth/avatar` | 🔑 | Upload avatar (base64 → Supabase Storage) |
+| PUT | `/api/auth/profile` | 🔑 | Update name / bio |
+
+#### `/api/posts`
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/posts/` | ? | Cursor-paginated feed (`limit`, `cursor`, `tags` query params) |
+| POST | `/api/posts/` | 🔑 | Create post |
+| PATCH | `/api/posts/{post_id}` | 🔑 | Edit post content / image |
+| DELETE | `/api/posts/{post_id}` | 🔑 | Delete post |
+| POST | `/api/posts/{post_id}/pin` | 🔑 | Toggle pin on post |
+| POST | `/api/posts/{post_id}/react` | 🔑 | Add/change reaction |
+| GET | `/api/posts/{post_id}/reactions` | — | List reactions |
+| GET | `/api/posts/{post_id}/comments` | ? | List comments |
+| POST | `/api/posts/{post_id}/comments` | 🔑 | Add comment |
+| POST | `/api/posts/{post_id}/comments/{comment_id}/react` | 🔑 | React to comment |
+| GET | `/api/posts/{post_id}/comments/{comment_id}/reactions` | — | List comment reactions |
+
+#### `/api/courses`
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/courses/` | — | List all courses |
+| POST | `/api/courses/` | 🔑 | Create course |
+| POST | `/api/courses/thumbnail` | 🔑 | Upload thumbnail (base64 → Supabase Storage) |
+| PUT | `/api/courses/{course_id}` | 🔑 | Update course (title, description, thumbnail, category) |
+| GET | `/api/courses/{course_id}/chapters` | — | List chapters (ordered by sort_order) |
+| POST | `/api/courses/{course_id}/chapters` | 🔑 | Add chapter |
+| PUT | `/api/courses/{course_id}/chapters/{chapter_id}` | 🔑 | Edit chapter (title, videoUrl, duration) |
+
+#### `/api/tags`
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/tags/` | — | List all tags |
+| POST | `/api/tags/` | 🔑 | Create tag |
+| DELETE | `/api/tags/{tag_id}` | 🔑 | Delete tag |
+
+#### `/api/invitations`
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/invitations/` | 👑 | Generate invite link |
+| GET | `/api/invitations/` | 👑 | List all invitations |
+| DELETE | `/api/invitations/{invitation_id}` | 👑 | Delete invitation |
+| GET | `/api/invitations/validate` | — | Validate invite token (`?token=`) |
+| POST | `/api/invitations/use` | — | Mark invite token as used |
+
+#### `/api/payments`
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/payments/upload-receipt` | — | Upload receipt image (base64 → Supabase Storage), returns `{ path }` |
+| POST | `/api/payments/register` | — | Register account + payment in one step (wizard flow) |
+| GET | `/api/payments/` | 👑 | List all payments (admin panel) |
+| GET | `/api/payments/{user_id}` | 🔑 | Get payments for a specific user |
+| PATCH | `/api/payments/{payment_id}/approve` | 👑 | Approve payment (triggers `sync_subscription_status`) |
+| PATCH | `/api/payments/{payment_id}/reject` | 👑 | Reject payment |
+| GET | `/api/payments/{payment_id}/receipt` | 👑 | Get signed URL for receipt image |
 
 ### Frontend (`src/`)
 

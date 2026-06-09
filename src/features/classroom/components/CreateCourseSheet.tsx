@@ -1,33 +1,32 @@
 import React, { useState } from "react";
 import { Camera, Save, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { apiFetch } from "../../../lib/api";
-
-
-import { Course } from '../../../types';
+import { useApiFetch } from "../../../lib/api";
+import { Course } from "../../../types";
 
 interface CreateCourseSheetProps {
   open: boolean;
   onClose: () => void;
   onCreated: () => void;
-  course?: Course | null; // Si está presente, modo edición
+  course?: Course | null;
 }
 
-
 export default function CreateCourseSheet({ open, onClose, onCreated, course }: CreateCourseSheetProps) {
+  const api = useApiFetch();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("General");
   const [thumbnailPreview, setThumbnailPreview] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Sincroniza los datos del curso al abrir en modo edición
   React.useEffect(() => {
     if (open && course) {
       setTitle(course.title);
       setDescription(course.description);
+      setCategory(course.category ?? "General");
       setThumbnailPreview(course.thumbnail);
       setThumbnailUrl(course.thumbnail);
     } else if (open && !course) {
@@ -39,6 +38,7 @@ export default function CreateCourseSheet({ open, onClose, onCreated, course }: 
   const reset = () => {
     setTitle("");
     setDescription("");
+    setCategory("General");
     setThumbnailPreview("");
     setThumbnailUrl("");
     setError(null);
@@ -52,7 +52,6 @@ export default function CreateCourseSheet({ open, onClose, onCreated, course }: 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setIsUploading(true);
     setError(null);
 
@@ -68,17 +67,14 @@ export default function CreateCourseSheet({ open, onClose, onCreated, course }: 
         canvas.height = img.height * scale;
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-
         setThumbnailPreview(dataUrl);
 
-        apiFetch<{ url: string }>("/api/courses/thumbnail", {
+        api<{ url: string }>("/api/courses/thumbnail", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageData: dataUrl }),
         })
-          .then(({ data }) => {
-            setThumbnailUrl(data.url);
-          })
+          .then(({ data }) => setThumbnailUrl(data.url))
           .catch((err) => {
             setError(err instanceof Error ? err.message : "Error al subir imagen");
             setThumbnailPreview("");
@@ -93,51 +89,35 @@ export default function CreateCourseSheet({ open, onClose, onCreated, course }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    if (!title.trim()) {
-      setError("El nombre del curso es obligatorio");
-      return;
-    }
-    if (!description.trim()) {
-      setError("La descripción es obligatoria");
-      return;
-    }
-    if (!thumbnailUrl) {
-      setError("Sube una imagen para el curso");
-      return;
-    }
+    if (!title.trim()) { setError("El nombre del curso es obligatorio"); return; }
+    if (!description.trim()) { setError("La descripción es obligatoria"); return; }
+    if (!thumbnailUrl) { setError("Sube una imagen para el curso"); return; }
 
     setIsSaving(true);
-
     try {
-      const stored = localStorage.getItem("edu_user");
-      const user = stored ? JSON.parse(stored) : null;
-
       if (course) {
-        // Modo edición
-        await apiFetch(`/api/courses/${course.id}`, {
+        await api(`/api/courses/${course.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: title.trim(),
             description: description.trim(),
             thumbnail: thumbnailUrl,
+            category: category.trim() || "General",
           }),
         });
       } else {
-        // Modo creación
-        await apiFetch("/api/courses", {
+        await api("/api/courses/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: title.trim(),
             description: description.trim(),
             thumbnail: thumbnailUrl,
-            userId: user?.id,
+            category: category.trim() || "General",
           }),
         });
       }
-
       reset();
       onCreated();
       onClose();
@@ -147,6 +127,9 @@ export default function CreateCourseSheet({ open, onClose, onCreated, course }: 
       setIsSaving(false);
     }
   };
+
+  const isEdit = Boolean(course);
+  const modalTitle = isEdit ? "Editar curso" : "Subir curso";
 
   const formContent = (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -173,6 +156,19 @@ export default function CreateCourseSheet({ open, onClose, onCreated, course }: 
           rows={4}
           placeholder="¿De qué trata este curso?"
           className="w-full mt-1 bg-slate-50 border-2 border-transparent focus:border-orange-200 focus:bg-white rounded-xl py-3 px-4 text-sm font-medium outline-none resize-none"
+        />
+      </div>
+
+      <div>
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">
+          Categoría
+        </label>
+        <input
+          type="text"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          placeholder="Ej. Marketing, Finanzas, General..."
+          className="w-full mt-1 bg-slate-50 border-2 border-transparent focus:border-orange-200 focus:bg-white rounded-xl py-3 px-4 text-sm font-medium outline-none"
         />
       </div>
 
@@ -218,13 +214,9 @@ export default function CreateCourseSheet({ open, onClose, onCreated, course }: 
         disabled={isSaving || isUploading}
         className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#8B5E3C] text-white font-bold rounded-2xl hover:bg-[#7a5235] disabled:opacity-50 transition-all"
       >
-        {isSaving
-          ? (course ? "Guardando..." : "Creando...")
-          : (
-            <>
-              <Save size={18} /> {course ? "Guardar cambios" : "Crear curso"}
-            </>
-          )}
+        {isSaving ? (isEdit ? "Guardando..." : "Creando...") : (
+          <><Save size={18} /> {isEdit ? "Guardar cambios" : "Crear curso"}</>
+        )}
       </button>
     </form>
   );
@@ -248,7 +240,7 @@ export default function CreateCourseSheet({ open, onClose, onCreated, course }: 
             className="fixed inset-x-0 bottom-0 z-70 bg-white rounded-t-4xl p-6 pb-28 max-h-[90vh] overflow-y-auto lg:hidden shadow-2xl"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-black text-slate-900">Subir curso</h2>
+              <h2 className="text-xl font-black text-slate-900">{modalTitle}</h2>
               <button type="button" onClick={handleClose} className="p-2 rounded-xl bg-slate-100 text-slate-600">
                 <X size={20} />
               </button>
@@ -265,7 +257,7 @@ export default function CreateCourseSheet({ open, onClose, onCreated, course }: 
             <div className="absolute inset-0 bg-black/30" onClick={handleClose} />
             <div className="relative mx-auto mt-16 w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl border border-slate-100">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-black text-slate-900">Subir curso</h2>
+                <h2 className="text-xl font-black text-slate-900">{modalTitle}</h2>
                 <button type="button" onClick={handleClose} className="p-2 rounded-xl bg-slate-100 text-slate-600">
                   <X size={20} />
                 </button>

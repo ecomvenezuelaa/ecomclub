@@ -1,8 +1,11 @@
 import React, { useState, useMemo } from "react";
-import { ArrowLeft, PlayCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, PlayCircle, CheckCircle, Pencil, X } from "lucide-react";
 import { Course } from "../../../types";
 import { motion } from "motion/react";
 import { useCourseChapters } from "../hooks/useCourseChapters";
+import { useApiFetch } from "../../../lib/api";
+import { useAuth } from "../../../context/AuthContext";
+import { isAdmin } from "../../../lib/permissions";
 import AddChapterForm from "./AddChapterForm";
 
 interface CourseDetailProps {
@@ -22,7 +25,16 @@ function toEmbedUrl(url: string): string | null {
 
 export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }: CourseDetailProps) {
   const { chapters, isLoading, refetch } = useCourseChapters(course.id);
+  const api = useApiFetch();
+  const { user } = useAuth();
   const [activeModule, setActiveModule] = useState(0);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editVideoUrl, setEditVideoUrl] = useState("");
+  const [editDuration, setEditDuration] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const playable = useMemo(
     () => chapters.filter((ch) => ch.videoUrl),
@@ -38,13 +50,51 @@ export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }
     onCourseUpdated?.();
   };
 
+  function startEdit(ch: { id: string; title: string; videoUrl?: string | null; duration?: string | null }) {
+    setEditingId(ch.id);
+    setEditTitle(ch.title);
+    setEditVideoUrl(ch.videoUrl ?? "");
+    setEditDuration(ch.duration ?? "");
+    setEditError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditError(null);
+  }
+
+  async function saveEdit(chapterId: string) {
+    if (!editTitle.trim()) { setEditError("El título es obligatorio"); return; }
+    setIsSavingEdit(true);
+    setEditError(null);
+    try {
+      await api(`/api/courses/${course.id}/chapters/${chapterId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          videoUrl: editVideoUrl.trim() || null,
+          duration: editDuration.trim() || null,
+        }),
+      });
+      setEditingId(null);
+      refetch();
+      onCourseUpdated?.();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Error al guardar");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  }
+
+  const userIsAdmin = isAdmin(user?.role);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="max-w-lg mx-auto lg:max-w-4xl space-y-5 pb-4"
     >
-
       <div className="flex items-center gap-2 mb-2">
         <button
           type="button"
@@ -59,7 +109,7 @@ export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }
             onClick={onEdit}
             className="ml-2 px-3 py-1 rounded-xl bg-orange-100 text-orange-700 font-bold text-xs hover:bg-orange-200 transition-colors"
           >
-            Editar
+            Editar curso
           </button>
         )}
       </div>
@@ -110,39 +160,106 @@ export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }
               const isActive = playableIndex >= 0 && playableIndex === activeModule;
               const hasVideo = Boolean(ch.videoUrl);
 
+              if (editingId === ch.id) {
+                return (
+                  <div
+                    key={ch.id}
+                    className="rounded-2xl border-2 border-orange-200 bg-orange-50/40 p-4 space-y-3"
+                  >
+                    <p className="text-sm font-black text-slate-900">Editar capítulo</p>
+
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="Título del capítulo *"
+                      className="w-full bg-white rounded-xl py-2.5 px-3 text-sm font-bold outline-none focus:ring-2 focus:ring-orange-200"
+                    />
+                    <input
+                      type="url"
+                      value={editVideoUrl}
+                      onChange={(e) => setEditVideoUrl(e.target.value)}
+                      placeholder="URL del video (YouTube, opcional)"
+                      className="w-full bg-white rounded-xl py-2.5 px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-orange-200"
+                    />
+                    <input
+                      type="text"
+                      value={editDuration}
+                      onChange={(e) => setEditDuration(e.target.value)}
+                      placeholder="Duración (ej. 10:00, opcional)"
+                      className="w-full bg-white rounded-xl py-2.5 px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-orange-200"
+                    />
+
+                    {editError && (
+                      <p className="text-xs font-medium text-red-600">{editError}</p>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => saveEdit(ch.id)}
+                        disabled={isSavingEdit}
+                        className="flex-1 py-2.5 bg-[#8B5E3C] text-white text-sm font-bold rounded-xl disabled:opacity-50"
+                      >
+                        {isSavingEdit ? "Guardando..." : "Guardar"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        disabled={isSavingEdit}
+                        className="px-4 py-2.5 bg-white text-slate-600 text-sm font-bold rounded-xl border border-slate-200"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
-                <button
+                <div
                   key={ch.id}
-                  type="button"
-                  disabled={!hasVideo}
-                  onClick={() => {
-                    if (playableIndex >= 0) setActiveModule(playableIndex);
-                  }}
-                  className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex items-start gap-4 ${
+                  className={`flex items-start gap-3 p-4 rounded-2xl border-2 transition-all ${
                     isActive
                       ? "border-orange-500 bg-orange-50 shadow-sm"
-                      : "border-slate-100 hover:border-orange-200 bg-white"
-                  } ${!hasVideo ? "opacity-80" : ""}`}
+                      : "border-slate-100 bg-white"
+                  }`}
                 >
-                  <div className={`mt-0.5 ${isActive ? "text-emerald-500" : "text-slate-400"}`}>
-                    {isActive ? <CheckCircle size={20} /> : <PlayCircle size={20} />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h4
-                      className={`font-bold text-sm ${isActive ? "text-orange-900" : "text-slate-700"}`}
+                  <button
+                    type="button"
+                    disabled={!hasVideo}
+                    onClick={() => { if (playableIndex >= 0) setActiveModule(playableIndex); }}
+                    className={`flex items-start gap-4 flex-1 text-left min-w-0 ${!hasVideo ? "opacity-80 cursor-default" : "hover:opacity-80 transition-opacity"}`}
+                  >
+                    <div className={`mt-0.5 shrink-0 ${isActive ? "text-emerald-500" : "text-slate-400"}`}>
+                      {isActive ? <CheckCircle size={20} /> : <PlayCircle size={20} />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className={`font-bold text-sm ${isActive ? "text-orange-900" : "text-slate-700"}`}>
+                        {ch.title}
+                      </h4>
+                      {ch.duration && (
+                        <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">
+                          {ch.duration}
+                        </p>
+                      )}
+                      {!hasVideo && (
+                        <p className="text-xs text-slate-400 mt-1">Sin video enlazado</p>
+                      )}
+                    </div>
+                  </button>
+
+                  {userIsAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => startEdit(ch)}
+                      className="shrink-0 p-1.5 rounded-lg text-slate-300 hover:text-orange-600 hover:bg-orange-50 transition-colors"
+                      title="Editar capítulo"
                     >
-                      {ch.title}
-                    </h4>
-                    {ch.duration && (
-                      <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">
-                        {ch.duration}
-                      </p>
-                    )}
-                    {!hasVideo && (
-                      <p className="text-xs text-slate-400 mt-1">Sin video enlazado</p>
-                    )}
-                  </div>
-                </button>
+                      <Pencil size={14} />
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>
