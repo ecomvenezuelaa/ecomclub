@@ -8,6 +8,9 @@ export interface User {
   avatar: string;
   bio?: string;
   subscription_status?: string | null;
+  gender?: string;
+  city?: string;
+  phone?: string;
 }
 
 interface AuthContextType {
