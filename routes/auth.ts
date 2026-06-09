@@ -149,21 +149,67 @@ router.post("/avatar", async (req, res) => {
 });
 
 router.put("/profile", async (req, res) => {
-  const { id, name, avatar, bio } = req.body;
+  const { id, name, avatar, bio, gender, city, phone } = req.body;
 
   if (!id) {
     return res.status(400).json({ error: "User ID is required" });
   }
 
-  const { data: updated, error: profileError } = await supabase
-    .from("profiles")
-    .update({ name, avatar, bio, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .select("name, role, avatar, bio")
-    .single();
+  const updateData: Record<string, any> = {
+    name,
+    avatar,
+    bio,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (gender !== undefined) updateData.gender = gender;
+  if (city !== undefined) updateData.city = city;
+  if (phone !== undefined) updateData.phone = phone;
+
+  let updated: any = null;
+  let profileError: any = null;
+
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(updateData)
+      .eq("id", id)
+      .select("name, role, avatar, bio, gender, city, phone")
+      .single();
+
+    updated = data;
+    profileError = error;
+  } catch (err) {
+    profileError = err;
+  }
+
+  // Fallback if the database does not have the new columns
+  if (profileError && (profileError.message?.includes("column") || profileError.message?.includes("does not exist") || String(profileError).includes("column"))) {
+    console.warn("La tabla de perfiles en Supabase no tiene los campos extendidos. Fallback a columnas estándar.");
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ name, avatar, bio, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select("name, role, avatar, bio")
+        .single();
+      
+      updated = data;
+      profileError = error;
+      
+      if (updated) {
+        // Adjuntar los campos extendidos para que se almacenen en LocalStorage
+        updated.gender = gender;
+        updated.city = city;
+        updated.phone = phone;
+      }
+    } catch (err) {
+      profileError = err;
+    }
+  }
 
   if (profileError) {
-    return res.status(400).json({ error: profileError.message });
+    return res.status(400).json({ error: profileError.message || String(profileError) });
   }
 
   const { data: authUser } = await supabase.auth.admin.getUserById(id);
@@ -176,6 +222,9 @@ router.put("/profile", async (req, res) => {
       role: updated.role,
       avatar: updated.avatar,
       bio: updated.bio,
+      gender: updated.gender || gender || "",
+      city: updated.city || city || "",
+      phone: updated.phone || phone || "",
     },
   });
 });

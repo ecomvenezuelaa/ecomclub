@@ -55,19 +55,13 @@ export default function ProfileHero({ name, avatar, subtitle, onEdit }: ProfileH
         <h1 className="mt-4 text-2xl font-black text-slate-900 tracking-tight">{name}</h1>
         <p className="mt-1 text-sm font-medium text-slate-500 text-center">{displaySubtitle}</p>
 
-        <div className="flex gap-3 mt-5 w-full max-w-xs">
+        <div className="mt-5 w-full max-w-xs">
           <button
             type="button"
             onClick={onEdit}
-            className="flex-1 py-3 rounded-2xl bg-[#8B5E3C] text-white text-sm font-bold shadow-md shadow-amber-900/10 hover:bg-[#7a5235] active:scale-[0.98] transition-all"
+            className="w-full py-3 rounded-2xl bg-[#8B5E3C] text-white text-sm font-bold shadow-md shadow-amber-900/10 hover:bg-[#7a5235] active:scale-[0.98] transition-all"
           >
             Editar perfil
-          </button>
-          <button
-            type="button"
-            className="flex-1 py-3 rounded-2xl bg-sky-100 text-[#8B5E3C] text-sm font-bold hover:bg-sky-200/80 active:scale-[0.98] transition-all"
-          >
-            Mensaje
           </button>
         </div>
       </div>
