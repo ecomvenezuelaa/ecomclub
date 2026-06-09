@@ -4,6 +4,7 @@ import CreatePost from "./CreatePost";
 import PostCard from "./PostCard";
 import Spinner from "../../../shared/ui/Spinner";
 import { API_BASE } from "../../../lib/api";
+import banner from "../../../assets/banner.png";
 
 interface TagOption { id: string; name: string; }
 
@@ -42,24 +43,9 @@ export default function PostFeed() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Hero Welcome Cell */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex items-center justify-between">
-        <div className="max-w-md">
-          <h1 className="text-2xl font-black text-slate-900 mb-1 tracking-tight">¡Bienvenido de nuevo!</h1>
-          <p className="text-slate-500 font-medium leading-relaxed text-sm">
-            Comparte ideas, hace preguntas y conecta con tu comunidad.
-          </p>
-        </div>
-        <div className="hidden sm:flex -space-x-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="w-10 h-10 rounded-full border-[3px] border-white bg-slate-100 shadow-sm overflow-hidden">
-              <img src={`https://i.pravatar.cc/100?u=${i}`} alt="user" />
-            </div>
-          ))}
-          <div className="w-10 h-10 rounded-full border-[3px] border-white bg-violet-500 text-[10px] flex items-center justify-center font-bold text-white shadow-sm">
-            +12
-          </div>
-        </div>
+      {/* Hero Welcome Banner */}
+      <div className="w-full overflow-hidden rounded-3xl border border-slate-100/80 shadow-sm">
+        <img src={banner} alt="Welcome Banner" className="w-full h-auto object-cover" />
       </div>
 
       {/* Main Feed */}
