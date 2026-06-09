@@ -43,20 +43,20 @@ export default function PostFeed() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Hero Welcome Cell */}
-      <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-sm flex items-center justify-between">
+      <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex items-center justify-between">
         <div className="max-w-md">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">¡Bienvenido de nuevo!</h1>
-          <p className="text-slate-500 font-medium leading-relaxed">
+          <h1 className="text-2xl font-black text-slate-900 mb-1 tracking-tight">¡Bienvenido de nuevo!</h1>
+          <p className="text-slate-500 font-medium leading-relaxed text-sm">
             Comparte ideas, hace preguntas y conecta con tu comunidad.
           </p>
         </div>
         <div className="hidden sm:flex -space-x-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="w-12 h-12 rounded-full border-4 border-white bg-slate-100 shadow-sm overflow-hidden">
+            <div key={i} className="w-10 h-10 rounded-full border-[3px] border-white bg-slate-100 shadow-sm overflow-hidden">
               <img src={`https://i.pravatar.cc/100?u=${i}`} alt="user" />
             </div>
           ))}
-          <div className="w-12 h-12 rounded-full border-4 border-white bg-indigo-600 text-[10px] flex items-center justify-center font-bold text-white shadow-sm">
+          <div className="w-10 h-10 rounded-full border-[3px] border-white bg-orange-500 text-[10px] flex items-center justify-center font-bold text-white shadow-sm">
             +12
           </div>
         </div>
@@ -74,8 +74,8 @@ export default function PostFeed() {
                 onClick={() => toggleTag(tag.name)}
                 className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                   selectedTags.includes(tag.name)
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "bg-slate-100 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600"
+                    ? "bg-orange-500 text-white shadow-sm"
+                    : "bg-slate-100 text-slate-500 hover:bg-orange-50 hover:text-orange-600"
                 }`}
               >
                 #{tag.name}
@@ -112,7 +112,7 @@ export default function PostFeed() {
 
         {isLoadingMore && (
           <div className="flex justify-center py-4">
-            <div className="w-6 h-6 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
