@@ -27,6 +27,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const adminNav = isAdmin(user?.role) ? [{ path: "/admin", label: "Admin", icon: <Shield size={20} /> }] : [];
+  const mobileAdminNav = isAdmin(user?.role) ? [{ path: "/admin", label: "Admin", icon: Shield }] : [];
   const isProfileView = location.pathname === "/profile";
 
   return (
@@ -127,7 +128,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
       {/* Mobile Bottom Navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-brand-border px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-50 shadow-[0_-4px_24px_rgba(15,23,42,0.06)]">
         <div className="flex items-end justify-around max-w-lg mx-auto">
-          {mobileNav.map((item) => {
+          {[...mobileNav, ...mobileAdminNav].map((item) => {
             const Icon = item.icon;
             return (
               <NavLink
