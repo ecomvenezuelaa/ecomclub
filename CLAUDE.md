@@ -109,6 +109,39 @@ Auth levels: `—` = public · `🔑` = authenticated user · `👑` = admin · 
 | PATCH | `/api/payments/{payment_id}/reject` | 👑 | Reject payment |
 | GET | `/api/payments/{payment_id}/receipt` | 👑 | Get signed URL for receipt image |
 
+#### `/api/levels` — Gamificación
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/levels/tiers` | — | Lista todos los rangos de nivel |
+| GET | `/api/levels/me` | 🔑 | Nivel, XP y tier actual del usuario autenticado. Returns `{ user_id, level, xp_total, xp_current, xp_next, tier? }` |
+| GET | `/api/levels/me/achievements` | 🔑 | Logros obtenidos por el usuario autenticado |
+| GET | `/api/levels/me/xp-history` | 🔑 | Historial de XP paginado (`?limit=20&offset=0`) |
+| GET | `/api/levels/{user_id}` | — | Nivel y tier de cualquier usuario (perfil ajeno) |
+| POST | `/api/levels/award` | 🔑 | Procesa un logro para el usuario autenticado. Body: `{ achievement_code, metadata? }`. Llamar desde otros endpoints, no directamente desde el cliente. |
+
+#### `/api/achievements`
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/achievements/` | — | Catálogo público de todos los logros activos |
+
+#### `/api/admin/levels` — Admin gamificación
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/admin/levels/users` | 👑 | Lista todos los usuarios con su nivel y XP |
+| POST | `/api/admin/levels/award` | 👑 | Otorga XP manualmente. Body: `{ user_id, xp_amount, reason }` |
+| GET | `/api/admin/levels/tiers` | 👑 | Lista rangos de nivel |
+| POST | `/api/admin/levels/tiers` | 👑 | Crea nuevo rango |
+| PATCH | `/api/admin/levels/tiers/{tier_id}` | 👑 | Edita rango existente |
+| POST | `/api/admin/levels/tiers/icon` | 👑 | Sube icono al bucket `level-tier-icons`. Body: `{ imageData }` → `{ url }` |
+
+#### `/api/admin/achievements` — Admin logros
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/admin/achievements/` | 👑 | Lista todos los logros incluyendo inactivos |
+| POST | `/api/admin/achievements/` | 👑 | Crea nuevo tipo de logro |
+| PATCH | `/api/admin/achievements/{achievement_id}` | 👑 | Edita logro existente |
+| POST | `/api/admin/achievements/icon` | 👑 | Sube icono al bucket `achievement-icons`. Body: `{ imageData }` → `{ url }` |
+
 ### Frontend (`src/`)
 
 React 19 SPA with `react-router-dom`, feature-based folder structure:
@@ -159,12 +192,15 @@ Roles that require an active subscription: `miembro`. Roles exempt from gating: 
 
 ### Profile page
 
-Profile data (level, stats, achievements, ranking, activity) lives in `src/features/profile/data/profileMock.ts` as static mock data — **not yet connected to Supabase**. Only name, avatar, and bio come from the real user object via `AuthContext`.
+- **Real data**: level/XP (`GET /api/levels/me`) and achievements (`GET /api/levels/me/achievements`) are fetched in `Profile.tsx` on mount and passed as props to `ProfileLevelCard` and `ProfileAchievements`.
+- **Mock data**: ranking, activity, and XP breakdown table remain static in `src/features/profile/data/profileMock.ts`.
+- `ProfileStatsGrid` receives `badgeCount` prop with the real count of earned achievements.
+- Personal data fields (`gender`, `city`, `phone`) come from the user object via `AuthContext` and are saved via `PUT /api/auth/profile`.
 
 ### Data patterns
 
 - `API_BASE` is `import.meta.env.VITE_API_URL ?? ""`. When set, the browser calls the Python backend directly (cross-origin). When empty, requests go through the Express proxy (same-origin).
-- **Always use trailing slashes** on collection endpoints: `/api/posts/`, `/api/tags/`, `/api/courses/`, `/api/payments/`, `/api/invitations/`. The FastAPI routes are defined with a trailing slash — omitting it causes a 307 redirect, and the browser strips the `Authorization` header on cross-origin redirects.
+- **Always use trailing slashes** on collection endpoints: `/api/posts/`, `/api/tags/`, `/api/courses/`, `/api/payments/`, `/api/invitations/`, `/api/achievements/`, `/api/admin/achievements/`. The FastAPI routes are defined with a trailing slash — omitting it causes a 307 redirect, and the browser strips the `Authorization` header on cross-origin redirects.
 - Use `useApiFetch()` hook (not bare `apiFetch`) for authenticated requests — it injects the token automatically.
 - Posts use cursor-based pagination (cursor = `created_at` of last item).
 - `posts_view` is a Supabase SQL view that joins posts with profiles — query it directly instead of joining in code.
