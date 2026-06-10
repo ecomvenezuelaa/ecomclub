@@ -30,8 +30,8 @@ export default function GamificationPanel() {
     setError(null);
     try {
       const [levelsRes, badgesRes] = await Promise.all([
-        api<Level[]>("/api/levels").catch(() => ({ data: [] })),
-        api<Badge[]>("/api/badges").catch(() => ({ data: [] }))
+        api<Level[]>("/api/admin/levels/tiers").catch(() => ({ data: [] })),
+        api<Badge[]>("/api/admin/achievements/").catch(() => ({ data: [] }))
       ]);
       setLevels(levelsRes.data || []);
       setBadges(badgesRes.data || []);
@@ -47,7 +47,7 @@ export default function GamificationPanel() {
   }, [loadData]);
 
   // --- Image Upload Handler ---
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<any>>, field: string) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<any>>, field: string, endpoint: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -55,7 +55,7 @@ export default function GamificationPanel() {
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         const maxWidth = 300;
@@ -64,8 +64,19 @@ export default function GamificationPanel() {
         canvas.height = img.height * scaleSize;
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-        setter((prev: any) => ({ ...prev, [field]: dataUrl }));
-        setIsUploading(false);
+        
+        try {
+          const { data } = await api<{ url: string }>(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageData: dataUrl })
+          });
+          setter((prev: any) => ({ ...prev, [field]: data.url }));
+        } catch (err: any) {
+          alert("Error subiendo imagen: " + err.message);
+        } finally {
+          setIsUploading(false);
+        }
       };
       img.src = reader.result as string;
     };
@@ -78,8 +89,8 @@ export default function GamificationPanel() {
     setIsSaving(true);
     try {
       const isEdit = !!editingLevel.id;
-      const url = isEdit ? `/api/levels/${editingLevel.id}` : "/api/levels";
-      const method = isEdit ? "PUT" : "POST";
+      const url = isEdit ? `/api/admin/levels/tiers/${editingLevel.id}` : "/api/admin/levels/tiers";
+      const method = isEdit ? "PATCH" : "POST";
       
       const { data } = await api<Level>(url, {
         method,
@@ -103,7 +114,7 @@ export default function GamificationPanel() {
   const handleDeleteLevel = async (id: string) => {
     if (!confirm("¿Estás seguro de eliminar este nivel?")) return;
     try {
-      await api(`/api/levels/${id}`, { method: "DELETE" });
+      await api(`/api/admin/levels/tiers/${id}`, { method: "DELETE" });
       setLevels(prev => prev.filter(l => l.id !== id));
     } catch (e: any) {
       alert("Error al eliminar nivel: " + e.message);
@@ -116,8 +127,8 @@ export default function GamificationPanel() {
     setIsSaving(true);
     try {
       const isEdit = !!editingBadge.id;
-      const url = isEdit ? `/api/badges/${editingBadge.id}` : "/api/badges";
-      const method = isEdit ? "PUT" : "POST";
+      const url = isEdit ? `/api/admin/achievements/${editingBadge.id}` : "/api/admin/achievements/";
+      const method = isEdit ? "PATCH" : "POST";
       
       const { data } = await api<Badge>(url, {
         method,
@@ -141,7 +152,7 @@ export default function GamificationPanel() {
   const handleDeleteBadge = async (id: string) => {
     if (!confirm("¿Estás seguro de eliminar esta insignia?")) return;
     try {
-      await api(`/api/badges/${id}`, { method: "DELETE" });
+      await api(`/api/admin/achievements/${id}`, { method: "DELETE" });
       setBadges(prev => prev.filter(b => b.id !== id));
     } catch (e: any) {
       alert("Error al eliminar insignia: " + e.message);
@@ -289,7 +300,7 @@ export default function GamificationPanel() {
                     <label className="flex-1 flex justify-center items-center gap-2 border-2 border-dashed border-slate-300 rounded-xl py-4 cursor-pointer hover:bg-slate-50 transition-colors text-slate-500 font-bold text-sm">
                       <Camera size={18} />
                       {isUploading ? "Subiendo..." : "Subir Imagen"}
-                      <input type="file" accept="image/*" className="hidden" disabled={isUploading} onChange={e => handleImageUpload(e, setEditingLevel, 'icon_url')} />
+                      <input type="file" accept="image/*" className="hidden" disabled={isUploading} onChange={e => handleImageUpload(e, setEditingLevel, 'icon_url', '/api/admin/levels/tiers/icon')} />
                     </label>
                   </div>
                 </div>
@@ -329,7 +340,7 @@ export default function GamificationPanel() {
                     <label className="flex-1 flex justify-center items-center gap-2 border-2 border-dashed border-slate-300 rounded-xl py-4 cursor-pointer hover:bg-slate-50 transition-colors text-slate-500 font-bold text-sm">
                       <Camera size={18} />
                       {isUploading ? "Subiendo..." : "Subir Imagen"}
-                      <input type="file" accept="image/*" className="hidden" disabled={isUploading} onChange={e => handleImageUpload(e, setEditingBadge, 'icon_url')} />
+                      <input type="file" accept="image/*" className="hidden" disabled={isUploading} onChange={e => handleImageUpload(e, setEditingBadge, 'icon_url', '/api/admin/achievements/icon')} />
                     </label>
                   </div>
                 </div>
