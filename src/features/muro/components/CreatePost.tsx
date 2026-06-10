@@ -81,44 +81,49 @@ export default function CreatePost({ onSubmit }: CreatePostProps) {
 
   return (
     <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col group focus-within:shadow-md transition-all">
-      <div className="p-6 flex items-center space-x-4">
-        {user?.avatar ? (
-          <img src={user.avatar} alt={user.name ?? "Usuario"} className="w-10 h-10 rounded-2xl object-cover flex-shrink-0" />
-        ) : (
-          <div className="w-10 h-10 rounded-2xl bg-violet-100 flex items-center justify-center text-violet-600 font-bold shadow-inner flex-shrink-0">
-            {user?.name?.[0]?.toUpperCase() ?? "U"}
-          </div>
-        )}
-        <input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-          type="text"
-          placeholder="Comparte algo con la comunidad..."
-          className="bg-slate-50 border-none rounded-2xl flex-1 px-6 py-3 text-sm font-medium focus:ring-0 placeholder:text-slate-400 outline-none"
-        />
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-        <button
-          onClick={() => fileRef.current?.click()}
-          className={`p-3 rounded-2xl transition-all ${imageData ? "bg-indigo-100 text-indigo-600" : "text-slate-400 hover:text-indigo-500 hover:bg-slate-50"}`}
-          title="Agregar imagen"
-        >
-          <ImagePlus size={18} />
-        </button>
-        <button
-          onClick={() => setShowTags((v) => !v)}
-          className={`p-3 rounded-2xl transition-all ${showTags ? "bg-indigo-100 text-indigo-600" : "text-slate-400 hover:text-indigo-500 hover:bg-slate-50"}`}
-          title="Agregar tags"
-        >
-          <Tag size={18} />
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={!value.trim()}
-          className="p-3 bg-[#ae3df7] text-white rounded-2xl shadow-md shadow-violet-950/10 hover:bg-[#921be2] active:scale-[0.98] disabled:opacity-50 disabled:grayscale transition-all"
-        >
-          <Send size={20} />
-        </button>
+      <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-3 flex-1">
+          {user?.avatar ? (
+            <img src={user.avatar} alt={user.name ?? "Usuario"} className="w-10 h-10 rounded-2xl object-cover flex-shrink-0" />
+          ) : (
+            <div className="w-10 h-10 rounded-2xl bg-violet-100 flex items-center justify-center text-violet-600 font-bold shadow-inner flex-shrink-0">
+              {user?.name?.[0]?.toUpperCase() ?? "U"}
+            </div>
+          )}
+          <input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            type="text"
+            placeholder="Comparte algo..."
+            className="bg-slate-50 border-none rounded-2xl w-full px-4 sm:px-6 py-3 text-sm font-medium focus:ring-0 placeholder:text-slate-400 outline-none"
+          />
+        </div>
+
+        <div className="flex items-center justify-end gap-2 shrink-0">
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+          <button
+            onClick={() => fileRef.current?.click()}
+            className={`p-3 rounded-2xl transition-all flex items-center justify-center ${imageData ? "bg-indigo-100 text-indigo-600" : "text-slate-400 hover:text-indigo-500 hover:bg-slate-50"}`}
+            title="Agregar imagen"
+          >
+            <ImagePlus size={18} />
+          </button>
+          <button
+            onClick={() => setShowTags((v) => !v)}
+            className={`p-3 rounded-2xl transition-all flex items-center justify-center ${showTags ? "bg-indigo-100 text-indigo-600" : "text-slate-400 hover:text-indigo-500 hover:bg-slate-50"}`}
+            title="Agregar tags"
+          >
+            <Tag size={18} />
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!value.trim()}
+            className="p-3 bg-[#ae3df7] text-white rounded-2xl shadow-md shadow-violet-950/10 hover:bg-[#921be2] active:scale-[0.98] disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center"
+          >
+            <Send size={20} />
+          </button>
+        </div>
       </div>
 
       {imageData && (
