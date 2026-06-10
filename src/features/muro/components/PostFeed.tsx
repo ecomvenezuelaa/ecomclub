@@ -42,7 +42,7 @@ export default function PostFeed() {
   if (isLoading) return <Spinner />;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6 px-4 md:px-0 pb-6">
       {/* Hero Welcome Banner */}
       <div className="w-full overflow-hidden rounded-3xl border border-slate-100/80 shadow-sm">
         <img src={banner} alt="Welcome Banner" className="w-full h-auto object-cover" />

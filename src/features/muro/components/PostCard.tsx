@@ -335,47 +335,18 @@ export default function PostCard({ post, index, onReact, onDelete, onEdit, onPin
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-8 pt-5 border-t border-slate-100">
+      <div className="flex items-center justify-between pt-5 border-t border-slate-100">
+        <button
+          onClick={toggle}
+          className={`flex items-center gap-2 transition-all font-bold text-sm ${
+            isOpen ? "text-indigo-600" : "text-slate-400 hover:text-indigo-600"
+          }`}
+        >
+          <MessageSquare size={20} />
+          <span>{commentsCount}</span>
+        </button>
+
         <div className="flex items-center gap-2">
-          {/* Botón reaccionar con picker */}
-          <div className="relative" ref={pickerRef}>
-            <button
-              onClick={() => setShowPicker((v) => !v)}
-              className={`flex items-center gap-1.5 transition-all font-bold text-sm ${
-                post.userReaction ? "text-indigo-600" : "text-slate-400 hover:text-indigo-600"
-              }`}
-            >
-              {post.userReaction
-                ? <span className="text-lg leading-none">{REACTIONS.find((r) => r.type === post.userReaction)?.emoji}</span>
-                : <Smile size={20} />
-              }
-            </button>
-
-            <AnimatePresence>
-              {showPicker && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.85, y: 4 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.85, y: 4 }}
-                  transition={{ duration: 0.12 }}
-                  className="absolute bottom-10 left-0 flex gap-1 bg-white border border-slate-200 rounded-2xl px-2 py-1.5 shadow-lg z-10"
-                >
-                  {REACTIONS.map((r) => (
-                    <button
-                      key={r.type}
-                      onClick={() => { setShowPicker(false); onReact(post.id, r.type); }}
-                      className={`text-2xl hover:scale-125 transition-transform p-0.5 rounded-lg ${
-                        post.userReaction === r.type ? "bg-indigo-100" : ""
-                      }`}
-                    >
-                      {r.emoji}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
           {/* Top 3 reacciones + conteo con tooltip */}
           {post.likes > 0 && (
             <div
@@ -402,7 +373,7 @@ export default function PostCard({ post, index, onReact, onDelete, onEdit, onPin
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 4 }}
                     transition={{ duration: 0.12 }}
-                    className="absolute bottom-8 left-0 bg-slate-800 text-white text-xs rounded-xl px-3 py-2 shadow-lg z-10 min-w-max max-w-[200px]"
+                    className="absolute bottom-8 right-0 bg-slate-800 text-white text-xs rounded-xl px-3 py-2 shadow-lg z-10 min-w-max max-w-[200px]"
                   >
                     {reactors === null ? (
                       <span className="text-slate-400">Cargando...</span>
@@ -426,17 +397,46 @@ export default function PostCard({ post, index, onReact, onDelete, onEdit, onPin
               </AnimatePresence>
             </div>
           )}
-        </div>
 
-        <button
-          onClick={toggle}
-          className={`flex items-center gap-2 transition-all font-bold text-sm ${
-            isOpen ? "text-indigo-600" : "text-slate-400 hover:text-indigo-600"
-          }`}
-        >
-          <MessageSquare size={20} />
-          <span>{commentsCount}</span>
-        </button>
+          {/* Botón reaccionar con picker */}
+          <div className="relative" ref={pickerRef}>
+            <button
+              onClick={() => setShowPicker((v) => !v)}
+              className={`flex items-center gap-1.5 transition-all font-bold text-sm ml-2 ${
+                post.userReaction ? "text-indigo-600" : "text-slate-400 hover:text-indigo-600"
+              }`}
+            >
+              {post.userReaction
+                ? <span className="text-lg leading-none">{REACTIONS.find((r) => r.type === post.userReaction)?.emoji}</span>
+                : <Smile size={20} />
+              }
+            </button>
+
+            <AnimatePresence>
+              {showPicker && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.85, y: 4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.85, y: 4 }}
+                  transition={{ duration: 0.12 }}
+                  className="absolute bottom-10 right-0 flex gap-1 bg-white border border-slate-200 rounded-2xl px-2 py-1.5 shadow-lg z-10"
+                >
+                  {REACTIONS.map((r) => (
+                    <button
+                      key={r.type}
+                      onClick={() => { setShowPicker(false); onReact(post.id, r.type); }}
+                      className={`text-2xl hover:scale-125 transition-transform p-0.5 rounded-lg ${
+                        post.userReaction === r.type ? "bg-indigo-100" : ""
+                      }`}
+                    >
+                      {r.emoji}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
 
       {/* Comment Section */}
