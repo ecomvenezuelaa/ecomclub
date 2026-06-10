@@ -5,6 +5,7 @@ import { isAdmin } from "../lib/permissions";
 import PostFeed from "../features/muro/components/PostFeed";
 import Classroom from "../features/classroom/components/Classroom";
 import Profile from "../features/profile/components/Profile";
+import LiveView from "../features/live/components/LiveView";
 import AdminDashboard from "../features/admin/AdminDashboard";
 import Landing from "../features/landing/landing";
 import Login from "../features/auth/components/Login";
@@ -61,6 +62,7 @@ export const authRoutes: AppRoute[] = [
 
 export const appRoutes: AppRoute[] = [
   { path: "/muro", element: <PostFeed /> },
+  { path: "/live", element: <LiveView /> },
   { path: "/classroom", element: <Classroom /> },
   { path: "/profile", element: <Profile /> },
   { path: "/admin", element: <AdminRoute /> },
