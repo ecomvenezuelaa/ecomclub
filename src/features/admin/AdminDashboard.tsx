@@ -41,6 +41,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { useApiFetch } from "../../lib/api";
 import type { Payment, PlanType } from "../../types";
+import GamificationPanel from "./GamificationPanel";
 
 const revenueData = [
   { name: "Ene", value: 4000 },
@@ -625,7 +626,7 @@ function PaymentsPanel() {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"stats" | "settings" | "invitaciones" | "pagos">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "settings" | "invitaciones" | "pagos" | "gamification">("stats");
   const [bankInfo, setBankInfo] = useState({
     accountHolder: "Sarah Jenkins",
     bankName: "Global Bank",
@@ -666,6 +667,12 @@ export default function AdminDashboard() {
             className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'pagos' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
             Pagos
+          </button>
+          <button
+            onClick={() => setActiveTab("gamification")}
+            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'gamification' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Niveles e Insignias
           </button>
           <button
             onClick={() => setActiveTab("settings")}
@@ -792,6 +799,8 @@ export default function AdminDashboard() {
       {activeTab === "invitaciones" && <InvitationsPanel />}
 
       {activeTab === "pagos" && <PaymentsPanel />}
+
+      {activeTab === "gamification" && <GamificationPanel />}
 
       {activeTab === "settings" && (
         <motion.div
