@@ -20,6 +20,8 @@ interface AuthContextType {
   logout: () => void;
   updateUser: (user: User) => void;
   isAuthenticated: boolean;
+  sessionExpired: boolean;
+  expireSession: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -32,10 +34,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => {
     return localStorage.getItem("edu_token");
   });
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const login = (userData: User, authToken: string) => {
     setUser(userData);
     setToken(authToken);
+    setSessionExpired(false);
     localStorage.setItem("edu_user", JSON.stringify(userData));
     localStorage.setItem("edu_token", authToken);
   };
@@ -43,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     setToken(null);
+    setSessionExpired(false);
     localStorage.removeItem("edu_user");
     localStorage.removeItem("edu_token");
   };
@@ -52,9 +57,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("edu_user", JSON.stringify(userData));
   };
 
+  const expireSession = () => {
+    setSessionExpired(true);
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, token, login, logout, updateUser, isAuthenticated: !!user }}
+      value={{ user, token, login, logout, updateUser, isAuthenticated: !!user, sessionExpired, expireSession }}
     >
       {children}
     </AuthContext.Provider>

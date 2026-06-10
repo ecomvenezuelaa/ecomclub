@@ -3,6 +3,15 @@ import { useAuth } from "../context/AuthContext";
 
 export const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 export async function parseApiResponse<T = unknown>(res: Response): Promise<T> {
   const text = await res.text();
 
@@ -52,7 +61,7 @@ export async function apiFetch<T = unknown>(
   if (!res.ok) {
     const d = typeof data === "object" && data !== null ? (data as Record<string, unknown>) : {};
     const message = d.error ? String(d.error) : d.detail ? String(d.detail) : `Error (${res.status})`;
-    throw new Error(message);
+    throw new ApiError(message, res.status);
   }
 
   return { data, res };
@@ -67,10 +76,18 @@ export async function apiFetch<T = unknown>(
  *   const { data } = await api<Post[]>("/api/posts");
  */
 export function useApiFetch() {
-  const { token } = useAuth();
+  const { token, expireSession } = useAuth();
   return useCallback(
-    <T = unknown>(input: RequestInfo | URL, init?: RequestInit) =>
-      apiFetch<T>(input, init, token ?? undefined),
-    [token]
+    async <T = unknown>(input: RequestInfo | URL, init?: RequestInit) => {
+      try {
+        return await apiFetch<T>(input, init, token ?? undefined);
+      } catch (err) {
+        if (token && err instanceof ApiError && err.status === 401) {
+          expireSession();
+        }
+        throw err;
+      }
+    },
+    [token, expireSession]
   );
 }
