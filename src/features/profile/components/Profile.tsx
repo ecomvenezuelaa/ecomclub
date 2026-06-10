@@ -144,6 +144,8 @@ export default function Profile() {
     ? `${user.bio}${userLevel ? ` • Nivel ${userLevel.level}` : ""}`
     : undefined;
 
+  const tierIcon = userLevel?.tier?.icon_url || (userLevel?.tier as any)?.icon || (userLevel?.tier as any)?.image_url;
+
   return (
     <>
       <div className="max-w-lg mx-auto lg:max-w-4xl space-y-6 pb-4">
@@ -151,7 +153,7 @@ export default function Profile() {
           name={user?.name ?? "Usuario"}
           avatar={user?.avatar}
           subtitle={subtitle}
-          levelIcon={userLevel?.tier?.icon_url}
+          levelIcon={tierIcon}
           onEdit={openEdit}
         />
 
@@ -162,6 +164,7 @@ export default function Profile() {
             xpNext={userLevel?.xp_next ?? 100}
             tierName={userLevel?.tier?.name}
             tierDescription={userLevel?.tier?.description}
+            tierIcon={tierIcon}
             loading={levelLoading}
           />
           
