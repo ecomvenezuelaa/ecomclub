@@ -265,7 +265,7 @@ export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }
           </div>
         )}
 
-        <AddChapterForm courseId={course.id} onAdded={handleChapterAdded} />
+        {userIsAdmin && <AddChapterForm courseId={course.id} onAdded={handleChapterAdded} />}
       </section>
     </motion.div>
   );

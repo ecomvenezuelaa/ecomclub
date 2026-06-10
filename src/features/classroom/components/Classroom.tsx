@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Plus } from "lucide-react";
 import { useCourses } from "../hooks/useCourses";
 import { useAuth } from "../../../context/AuthContext";
-import { requireAdmin } from "../../../lib/permissions";
+import { requireAdmin, isAdmin } from "../../../lib/permissions";
 import CourseCard from "./CourseCard";
 import CourseDetail from "./CourseDetail";
 import CreateCourseSheet from "./CreateCourseSheet";
@@ -11,6 +11,7 @@ import { Course } from "../../../types";
 
 export default function Classroom() {
   const { user } = useAuth();
+  const userIsAdmin = isAdmin(user?.role);
   const { courses, isLoading, error, refetch } = useCourses();
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -35,12 +36,14 @@ export default function Classroom() {
         course={selectedCourse}
         onBack={() => setSelectedCourse(null)}
         onCourseUpdated={refetch}
-        onEdit={() => {
-          if (requireAdmin(user?.role, "editar cursos")) {
-            setEditingCourse(selectedCourse);
-            setShowCreate(true);
-          }
-        }}
+        onEdit={
+          userIsAdmin
+            ? () => {
+                setEditingCourse(selectedCourse);
+                setShowCreate(true);
+              }
+            : undefined
+        }
       />
     );
   }
@@ -53,13 +56,15 @@ export default function Classroom() {
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Contenido</h1>
             <p className="text-sm font-medium text-slate-500 mt-1">Tus cursos y lecciones disponibles</p>
           </div>
-          <button
-            type="button"
-            onClick={() => { if (requireAdmin(user?.role, "subir cursos")) setShowCreate(true); }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#ae3df7] text-white text-sm font-bold shadow-md shadow-violet-950/10 hover:bg-[#921be2] active:scale-[0.98] transition-all shrink-0"
-          >
-            <Plus size={18} /> Subir curso
-          </button>
+          {userIsAdmin && (
+            <button
+              type="button"
+              onClick={() => { if (requireAdmin(user?.role, "subir cursos")) setShowCreate(true); }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#ae3df7] text-white text-sm font-bold shadow-md shadow-violet-950/10 hover:bg-[#921be2] active:scale-[0.98] transition-all shrink-0"
+            >
+              <Plus size={18} /> <span className="hidden sm:inline">Nuevo Curso</span>
+            </button>
+          )}
         </header>
 
         {error && (
@@ -74,13 +79,15 @@ export default function Classroom() {
             <p className="text-sm text-slate-500 mt-1 mb-4">
               Crea tu primer curso con nombre, descripción e imagen.
             </p>
-            <button
-              type="button"
-              onClick={() => { if (requireAdmin(user?.role, "subir cursos")) setShowCreate(true); }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#ae3df7] text-white text-sm font-bold"
-            >
-              <Plus size={18} /> Subir curso
-            </button>
+            {userIsAdmin && (
+              <button
+                type="button"
+                onClick={() => { if (requireAdmin(user?.role, "subir cursos")) setShowCreate(true); }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#ae3df7] text-white text-sm font-bold"
+              >
+                <Plus size={18} /> Subir curso
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -90,12 +97,14 @@ export default function Classroom() {
                 course={course}
                 index={idx}
                 onClick={() => setSelectedCourse(course)}
-                onEdit={() => {
-                  if (requireAdmin(user?.role, "editar cursos")) {
-                    setEditingCourse(course);
-                    setShowCreate(true);
-                  }
-                }}
+                onEdit={
+                  userIsAdmin
+                    ? () => {
+                        setEditingCourse(course);
+                        setShowCreate(true);
+                      }
+                    : undefined
+                }
               />
             ))}
           </div>

@@ -105,12 +105,6 @@ export default function Layout({ children, onLogout }: LayoutProps) {
             <span className="font-black text-lg tracking-tight text-slate-900">Ecom Club</span>
           </div>
           <div className="flex items-center gap-2">
-            <button className="p-2 text-brand-text-muted hover:bg-slate-100 rounded-full">
-              <Bell size={20} />
-            </button>
-            <button className="p-2 text-brand-text-muted hover:bg-slate-100 rounded-full">
-              <LayoutGrid size={20} />
-            </button>
             <button
               onClick={onLogout}
               className="p-2 text-red-400 hover:bg-red-50 rounded-full transition-colors"
