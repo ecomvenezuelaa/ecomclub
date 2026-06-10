@@ -75,3 +75,18 @@ export interface Comment {
   userReaction: string | null;
   replies?: Comment[];
 }
+
+export interface Level {
+  id: string;
+  name: string;
+  description: string;
+  icon_url: string;
+  xp_required?: number;
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon_url: string;
+}

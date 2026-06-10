@@ -29,6 +29,7 @@ interface Props {
   xpNext: number;
   tierName?: string;
   tierDescription?: string;
+  tierIcon?: string;
   loading?: boolean;
 }
 
@@ -38,6 +39,7 @@ export default function ProfileLevelCard({
   xpNext,
   tierName,
   tierDescription,
+  tierIcon,
   loading = false,
 }: Props) {
   const [showXpInfo, setShowXpInfo] = useState(false);
@@ -114,8 +116,12 @@ export default function ProfileLevelCard({
       {/* Tier info */}
       {tierDescription && (
         <div className="mt-4 p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-start gap-3 relative z-10">
-          <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
-            <Award size={18} />
+          <div className="w-10 h-10 p-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0 flex items-center justify-center overflow-hidden">
+            {tierIcon ? (
+              <img src={tierIcon} alt={tierName} className="w-full h-full object-contain" />
+            ) : (
+              <Award size={18} />
+            )}
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tu Rango</p>

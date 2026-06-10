@@ -36,7 +36,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
       <aside className="hidden lg:flex w-72 bg-white border-r border-brand-border flex-col p-8 space-y-10 flex-shrink-0">
         <div className="group cursor-pointer flex items-center space-x-3" onClick={() => navigate("/muro")}>
           <img src={logo} alt="Logo" className="w-10 h-10 object-contain transition-transform group-hover:scale-110" />
-          <span className="font-black text-xl tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">Emprende Más</span>
+          <span className="font-black text-xl tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">Ecom Club</span>
         </div>
 
         <nav className="flex-1 space-y-3">
@@ -102,7 +102,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
               alt="Logo"
               className="w-8 h-8 object-contain"
             />
-            <span className="font-black text-lg tracking-tight text-slate-900">Emprende Más</span>
+            <span className="font-black text-lg tracking-tight text-slate-900">Ecom Club</span>
           </div>
           <div className="flex items-center gap-2">
             <button className="p-2 text-brand-text-muted hover:bg-slate-100 rounded-full">
@@ -139,7 +139,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                 to={item.path}
                 className={({ isActive }) =>
                   `flex flex-col items-center gap-1 min-w-[4.5rem] py-1 transition-all ${
-                    isActive ? "text-orange-600" : "text-slate-400"
+                    isActive ? "text-violet-600" : "text-slate-400"
                   }`
                 }
               >
@@ -148,13 +148,13 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                     <span
                       className={`flex items-center justify-center rounded-full transition-all ${
                         isActive
-                          ? "w-12 h-12 bg-orange-500 text-white shadow-lg shadow-orange-200/70 -mt-3"
+                          ? "w-12 h-12 bg-violet-500 text-white shadow-lg shadow-violet-200/70 -mt-3"
                           : "w-10 h-10"
                       }`}
                     >
                       <Icon size={isActive ? 22 : 20} strokeWidth={isActive ? 2.5 : 2} />
                     </span>
-                    <span className={`text-[10px] font-bold ${isActive ? "text-orange-600" : "text-slate-400"}`}>
+                    <span className={`text-[10px] font-bold ${isActive ? "text-violet-600" : "text-slate-400"}`}>
                       {item.label}
                     </span>
                   </>

@@ -4,6 +4,7 @@ import CreatePost from "./CreatePost";
 import PostCard from "./PostCard";
 import Spinner from "../../../shared/ui/Spinner";
 import { API_BASE } from "../../../lib/api";
+import banner from "../../../assets/banner.png";
 
 interface TagOption { id: string; name: string; }
 
@@ -42,24 +43,9 @@ export default function PostFeed() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Hero Welcome Cell */}
-      <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-sm flex items-center justify-between">
-        <div className="max-w-md">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">¡Bienvenido de nuevo!</h1>
-          <p className="text-slate-500 font-medium leading-relaxed">
-            Comparte ideas, hace preguntas y conecta con tu comunidad.
-          </p>
-        </div>
-        <div className="hidden sm:flex -space-x-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="w-12 h-12 rounded-full border-4 border-white bg-slate-100 shadow-sm overflow-hidden">
-              <img src={`https://i.pravatar.cc/100?u=${i}`} alt="user" />
-            </div>
-          ))}
-          <div className="w-12 h-12 rounded-full border-4 border-white bg-indigo-600 text-[10px] flex items-center justify-center font-bold text-white shadow-sm">
-            +12
-          </div>
-        </div>
+      {/* Hero Welcome Banner */}
+      <div className="w-full overflow-hidden rounded-3xl border border-slate-100/80 shadow-sm">
+        <img src={banner} alt="Welcome Banner" className="w-full h-auto object-cover" />
       </div>
 
       {/* Main Feed */}
@@ -74,8 +60,8 @@ export default function PostFeed() {
                 onClick={() => toggleTag(tag.name)}
                 className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                   selectedTags.includes(tag.name)
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "bg-slate-100 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600"
+                    ? "bg-violet-500 text-white shadow-sm"
+                    : "bg-slate-100 text-slate-500 hover:bg-violet-50 hover:text-violet-600"
                 }`}
               >
                 #{tag.name}
@@ -112,7 +98,7 @@ export default function PostFeed() {
 
         {isLoadingMore && (
           <div className="flex justify-center py-4">
-            <div className="w-6 h-6 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 

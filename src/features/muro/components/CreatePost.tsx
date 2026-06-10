@@ -80,12 +80,12 @@ export default function CreatePost({ onSubmit }: CreatePostProps) {
   };
 
   return (
-    <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col group focus-within:shadow-md transition-all">
       <div className="p-6 flex items-center space-x-4">
         {user?.avatar ? (
           <img src={user.avatar} alt={user.name ?? "Usuario"} className="w-10 h-10 rounded-2xl object-cover flex-shrink-0" />
         ) : (
-          <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold shadow-inner flex-shrink-0">
+          <div className="w-10 h-10 rounded-2xl bg-violet-100 flex items-center justify-center text-violet-600 font-bold shadow-inner flex-shrink-0">
             {user?.name?.[0]?.toUpperCase() ?? "U"}
           </div>
         )}
@@ -95,7 +95,7 @@ export default function CreatePost({ onSubmit }: CreatePostProps) {
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
           type="text"
           placeholder="Comparte algo con la comunidad..."
-          className="bg-slate-50 border-none rounded-2xl flex-1 px-6 py-3 text-sm font-medium focus:ring-0 placeholder:text-slate-400"
+          className="bg-slate-50 border-none rounded-2xl flex-1 px-6 py-3 text-sm font-medium focus:ring-0 placeholder:text-slate-400 outline-none"
         />
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
         <button
@@ -115,7 +115,7 @@ export default function CreatePost({ onSubmit }: CreatePostProps) {
         <button
           onClick={handleSubmit}
           disabled={!value.trim()}
-          className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-100 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:grayscale transition-all"
+          className="p-3 bg-[#ae3df7] text-white rounded-2xl shadow-md shadow-violet-950/10 hover:bg-[#921be2] active:scale-[0.98] disabled:opacity-50 disabled:grayscale transition-all"
         >
           <Send size={20} />
         </button>
@@ -143,12 +143,12 @@ export default function CreatePost({ onSubmit }: CreatePostProps) {
               onChange={(e) => setNewTag(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreateTag()}
               placeholder="Nuevo tag..."
-              className="flex-1 bg-slate-50 rounded-xl px-3 py-1.5 text-xs font-medium outline-none border border-slate-200 focus:border-indigo-300 transition-colors placeholder:text-slate-400"
+              className="flex-1 bg-slate-50 rounded-xl px-3 py-1.5 text-xs font-medium outline-none border border-slate-200 focus:border-violet-300 transition-colors placeholder:text-slate-400"
             />
             <button
               onClick={handleCreateTag}
               disabled={!newTag.trim() || creatingTag}
-              className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-bold disabled:opacity-40 hover:bg-indigo-700 transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 bg-[#ae3df7] text-white rounded-xl text-xs font-bold disabled:opacity-40 hover:bg-[#921be2] transition-colors"
             >
               <Plus size={13} /> Crear
             </button>
@@ -160,7 +160,7 @@ export default function CreatePost({ onSubmit }: CreatePostProps) {
                 key={tag.id}
                 className={`flex items-center gap-1 pl-3 pr-1.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                   selectedIds.includes(tag.id)
-                    ? "bg-indigo-600 text-white shadow-sm"
+                    ? "bg-violet-500 text-white shadow-sm"
                     : "bg-slate-100 text-slate-500"
                 }`}
               >
