@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import logo from "../../../assets/logo.png";
-import { Mail, Lock, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight, Github } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuth } from "../../../context/AuthContext";
 import { API_BASE } from "../../../lib/api";
-import { supabaseClient } from "../../../lib/supabaseClient";
 
 interface LoginProps {
   onGoToRegister: () => void;
@@ -37,17 +36,6 @@ export default function Login({ onGoToRegister }: LoginProps) {
       setError(`Error de conexión: ${err instanceof Error ? err.message : "Intenta de nuevo"}`);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    const redirectTo = `${window.location.origin}/auth/callback`;
-    const { error } = await supabaseClient.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo },
-    });
-    if (error) {
-      setError("Error al iniciar sesión con Google. Intenta de nuevo.");
     }
   };
 
@@ -150,19 +138,8 @@ export default function Login({ onGoToRegister }: LoginProps) {
 
           <div className="mt-8 pt-8 border-t border-slate-100 flex flex-col items-center">
             <p className="text-sm text-slate-400 font-medium mb-4">O continúa con</p>
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              className="w-full flex items-center justify-center gap-3 py-3 border-2 border-slate-100 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              {/* Google SVG icon */}
-              <svg width="20" height="20" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M43.611 20.083H42V20H24v8h11.303C33.982 32.443 29.418 35 24 35c-6.075 0-11-4.925-11-11s4.925-11 11-11c2.804 0 5.352 1.057 7.287 2.783l5.657-5.657C33.237 7.609 28.832 6 24 6 13.954 6 6 13.954 6 24s7.954 18 18 18c10.045 0 18-7.954 18-18 0-1.215-.127-2.399-.389-3.917z" fill="#FFC107"/>
-                <path d="M6.306 14.691l6.571 4.819C14.655 16.108 19.001 13 24 13c2.804 0 5.352 1.057 7.287 2.783l5.657-5.657C33.237 7.609 28.832 6 24 6 16.318 6 9.656 10.337 6.306 14.691z" fill="#FF3D00"/>
-                <path d="M24 44c4.716 0 9.002-1.593 12.305-4.205l-6.007-5.083C28.55 36.492 26.344 37 24 37c-5.395 0-9.947-3.534-11.289-8.317l-6.51 5.017C9.476 40.069 16.228 44 24 44z" fill="#4CAF50"/>
-                <path d="M43.611 20.083H42V20H24v8h11.303a11.04 11.04 0 01-4.016 5.391l.003-.002 6.007 5.083C36.932 39.205 44 34 44 24c0-1.215-.127-2.399-.389-3.917z" fill="#1976D2"/>
-              </svg>
-              Continuar con Google
+            <button className="w-full flex items-center justify-center gap-3 py-3 border-2 border-slate-100 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-colors">
+              <Github size={20} /> Github
             </button>
             <p className="mt-8 text-sm font-medium text-slate-500">
               ¿No tienes cuenta?{" "}
