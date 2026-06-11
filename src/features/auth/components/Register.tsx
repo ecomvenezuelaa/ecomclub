@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Mail, Lock, User, Sparkles, Phone, Hash, CreditCard, Upload,
   CheckCircle2, ChevronLeft, ChevronRight, Clock, FileText, X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { apiFetch } from "../../../lib/api";
-import type { PlanType } from "../../../types";
+import type { PaymentMethod, PlanType } from "../../../types";
 import logo from "../../../assets/logo.png";
 
 interface RegisterProps {
@@ -19,8 +19,6 @@ const PLAN_OPTIONS: { value: PlanType; label: string; sublabel: string }[] = [
   { value: "1y", label: "1 año", sublabel: "Plan anual" },
   { value: "indefinido", label: "Indefinido", sublabel: "Pago único, sin vencimiento" },
 ];
-
-const PAYMENT_METHOD_SUGGESTIONS = ["Transferencia bancaria", "Pago móvil", "Zelle", "Binance Pay", "Efectivo"];
 
 const MAX_RECEIPT_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -116,9 +114,14 @@ export default function Register({ onGoToLogin }: RegisterProps) {
   // Paso 2 — plan y datos de pago
   const [plan, setPlan] = useState<PlanType>("1m");
   const [amount, setAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
   const [referenceNumber, setReferenceNumber] = useState("");
   const [phone, setPhone] = useState("");
+
+  // Métodos de pago activos (catálogo público)
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [selectedMethodId, setSelectedMethodId] = useState("");
+  const [methodsLoading, setMethodsLoading] = useState(true);
+  const [methodsError, setMethodsError] = useState<string | null>(null);
 
   // Paso 3 — comprobante
   const [receiptFileName, setReceiptFileName] = useState("");
@@ -129,6 +132,32 @@ export default function Register({ onGoToLogin }: RegisterProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const selectedMethod = paymentMethods.find((m) => m.id === selectedMethodId) ?? null;
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPaymentMethods() {
+      setMethodsLoading(true);
+      setMethodsError(null);
+      try {
+        const { data } = await apiFetch<PaymentMethod[]>("/api/payment-methods/");
+        if (cancelled) return;
+        setPaymentMethods(data);
+        setSelectedMethodId((prev) => prev || data[0]?.id || "");
+      } catch (err) {
+        if (!cancelled) {
+          setMethodsError(err instanceof Error ? err.message : "No se pudieron cargar los métodos de pago.");
+        }
+      } finally {
+        if (!cancelled) setMethodsLoading(false);
+      }
+    }
+    loadPaymentMethods();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function goToStep(target: Step) {
     setStepError(null);
@@ -148,7 +177,7 @@ export default function Register({ onGoToLogin }: RegisterProps) {
   }
 
   function handleNextFromStep2() {
-    if (!amount.trim() || !paymentMethod.trim() || !referenceNumber.trim() || !phone.trim()) {
+    if (!amount.trim() || !selectedMethodId || !referenceNumber.trim() || !phone.trim()) {
       setStepError("Completa todos los campos del pago para continuar.");
       return;
     }
@@ -213,6 +242,10 @@ export default function Register({ onGoToLogin }: RegisterProps) {
       setSubmitError("Sube tu comprobante de pago antes de finalizar.");
       return;
     }
+    if (!selectedMethodId) {
+      setSubmitError("Selecciona un método de pago.");
+      return;
+    }
     setSubmitError(null);
     setIsSubmitting(true);
     try {
@@ -225,7 +258,7 @@ export default function Register({ onGoToLogin }: RegisterProps) {
           password,
           plan,
           amount: Number(amount),
-          payment_method: paymentMethod.trim(),
+          payment_method_id: selectedMethodId,
           reference_number: referenceNumber.trim(),
           phone: phone.trim(),
           receipt_path: receiptPath,
@@ -328,34 +361,56 @@ export default function Register({ onGoToLogin }: RegisterProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <label className={labelClass}>Monto pagado</label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input type="number" min="0" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className={inputClass} />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className={labelClass}>Método de pago</label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="text"
-                      required
-                      list="payment-method-suggestions"
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      placeholder="Ej. Transferencia bancaria"
-                      className={inputClass}
-                    />
-                    <datalist id="payment-method-suggestions">
-                      {PAYMENT_METHOD_SUGGESTIONS.map((m) => <option key={m} value={m} />)}
-                    </datalist>
-                  </div>
+              <div className="space-y-2">
+                <label className={labelClass}>Monto pagado</label>
+                <div className="relative">
+                  <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input type="number" min="0" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className={inputClass} />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <label className={labelClass}>Método de pago</label>
+                {methodsLoading ? (
+                  <p className="text-sm font-medium text-slate-400 bg-slate-50 px-4 py-3 rounded-xl">Cargando métodos de pago...</p>
+                ) : methodsError ? (
+                  <FieldError message={methodsError} />
+                ) : paymentMethods.length === 0 ? (
+                  <p className="text-sm font-medium text-slate-400 bg-slate-50 px-4 py-3 rounded-xl">
+                    No hay métodos de pago disponibles por el momento.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {paymentMethods.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setSelectedMethodId(m.id)}
+                        className={`text-left p-4 rounded-2xl border-2 transition-all ${
+                          selectedMethodId === m.id
+                            ? "border-indigo-600 bg-indigo-50"
+                            : "border-slate-100 bg-slate-50 hover:border-slate-200"
+                        }`}
+                      >
+                        <p className={`font-black text-sm ${selectedMethodId === m.id ? "text-indigo-600" : "text-slate-800"}`}>{m.name}</p>
+                        {m.description && <p className="text-[11px] font-medium text-slate-400 mt-0.5">{m.description}</p>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {selectedMethod && selectedMethod.fields.length > 0 && (
+                <div className="bg-indigo-50 rounded-2xl p-5 space-y-2">
+                  <p className="text-xs font-black text-indigo-400 uppercase tracking-[0.15em] mb-1">Datos para tu pago</p>
+                  {selectedMethod.fields.map((f) => (
+                    <div key={f.field_key} className="flex items-center justify-between gap-4 text-sm">
+                      <span className="font-medium text-slate-500">{f.field_label}</span>
+                      <span className="font-bold text-slate-800 text-right">{f.value ?? "—"}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-2">
@@ -441,7 +496,7 @@ export default function Register({ onGoToLogin }: RegisterProps) {
                 {[
                   ["Plan", PLAN_OPTIONS.find((p) => p.value === plan)?.label ?? plan],
                   ["Monto", amount],
-                  ["Método de pago", paymentMethod],
+                  ["Método de pago", selectedMethod?.name ?? ""],
                   ["Referencia", referenceNumber],
                   ["Teléfono", phone],
                 ].map(([k, v]) => (

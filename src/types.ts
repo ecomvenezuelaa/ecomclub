@@ -44,6 +44,24 @@ export type PlanType = "1m" | "3m" | "6m" | "1y" | "indefinido";
 
 export type PaymentStatus = "pending" | "success" | "failed";
 
+export type PaymentMethodFieldType = "text" | "email" | "phone" | "number";
+
+export interface PaymentMethodField {
+  field_key: string;
+  field_label: string;
+  field_type: PaymentMethodFieldType;
+  value: string | null;
+}
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  sort_order: number;
+  fields: PaymentMethodField[];
+}
+
 export interface Payment {
   id: string;
   user_id: string;
@@ -51,6 +69,7 @@ export interface Payment {
   amount: number;
   status: PaymentStatus;
   payment_method: string;
+  payment_method_id?: string | null;
   reference_number: string;
   receipt_url: string | null;
   phone: string;
