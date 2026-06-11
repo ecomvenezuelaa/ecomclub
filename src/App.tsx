@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { useAuth } from "./context/AuthContext";
@@ -7,6 +7,7 @@ import AccountStatus from "./features/auth/components/AccountStatus";
 import SessionExpired from "./features/auth/components/SessionExpired";
 import { needsActiveSubscription, hasActiveSubscription } from "./lib/permissions";
 import { authRoutes, appRoutes, AppRoute } from "./routes";
+import OnboardingModal, { needsOnboarding, markOnboardingDoneForUser } from "./features/onboarding/OnboardingModal";
 
 function AnimatedRoutes({ routes, fallback }: { routes: AppRoute[]; fallback: string }) {
   const location = useLocation();
@@ -45,10 +46,30 @@ function AppContent() {
     return <AccountStatus />;
   }
 
+  return <AuthenticatedApp onLogout={logout} userId={user?.id} />;
+}
+
+// Separated so the onboarding state is scoped to authenticated sessions
+function AuthenticatedApp({ onLogout, userId }: { onLogout: () => void; userId?: string }) {
+  const [showOnboarding, setShowOnboarding] = useState(() => needsOnboarding(userId));
+
+  const handleOnboardingComplete = () => {
+    if (userId) markOnboardingDoneForUser(userId);
+    setShowOnboarding(false);
+  };
+
   return (
-    <Layout onLogout={logout}>
-      <AnimatedRoutes routes={appRoutes} fallback="/muro" />
-    </Layout>
+    <>
+      <Layout onLogout={onLogout}>
+        <AnimatedRoutes routes={appRoutes} fallback="/muro" />
+      </Layout>
+
+      <AnimatePresence>
+        {showOnboarding && (
+          <OnboardingModal onComplete={handleOnboardingComplete} />
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
