@@ -26,6 +26,7 @@ import { useApiFetch } from "../../lib/api";
 import type { Payment, PlanType } from "../../types";
 import GamificationPanel from "./GamificationPanel";
 import AnalyticsPanel from "./AnalyticsPanel";
+import PaymentMethodsPanel from "./PaymentMethodsPanel";
 
 interface Invitation {
   id: string;
@@ -590,7 +591,7 @@ function PaymentsPanel() {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"stats" | "settings" | "invitaciones" | "pagos" | "gamification">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "settings" | "invitaciones" | "pagos" | "metodos-pago" | "gamification">("stats");
   const [bankInfo, setBankInfo] = useState({
     accountHolder: "Sarah Jenkins",
     bankName: "Global Bank",
@@ -626,6 +627,12 @@ export default function AdminDashboard() {
             Pagos
           </button>
           <button
+            onClick={() => setActiveTab("metodos-pago")}
+            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'metodos-pago' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Métodos de Pago
+          </button>
+          <button
             onClick={() => setActiveTab("gamification")}
             className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'gamification' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
@@ -645,6 +652,8 @@ export default function AdminDashboard() {
       {activeTab === "invitaciones" && <InvitationsPanel />}
 
       {activeTab === "pagos" && <PaymentsPanel />}
+
+      {activeTab === "metodos-pago" && <PaymentMethodsPanel />}
 
       {activeTab === "gamification" && <GamificationPanel />}
 

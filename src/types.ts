@@ -62,6 +62,21 @@ export interface PaymentMethod {
   fields: PaymentMethodField[];
 }
 
+export interface AdminPaymentMethodField extends PaymentMethodField {
+  id: string;
+  is_required: boolean;
+  sort_order: number;
+}
+
+export interface AdminPaymentMethod {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  sort_order: number;
+  fields: AdminPaymentMethodField[];
+}
+
 export interface Payment {
   id: string;
   user_id: string;
