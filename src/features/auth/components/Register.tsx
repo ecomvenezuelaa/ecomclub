@@ -252,14 +252,9 @@ export default function Register({ onGoToLogin }: RegisterProps) {
       setStepError("Completa todos los campos del pago para continuar.");
       return;
     }
-    const selectedCountry = COUNTRY_CODES.find((c) => c.code === countryCode) ?? COUNTRY_CODES[0];
     const digitsOnly = phone.replace(/\D/g, "");
-    if (digitsOnly.length !== selectedCountry.digits) {
-      setStepError(`El teléfono para ${selectedCountry.name} debe tener exactamente ${selectedCountry.digits} dígitos.`);
-      return;
-    }
-    if (countryCode === "+58" && !/^(04[1-9]|02[0-9])/.test(digitsOnly)) {
-      setStepError("El teléfono venezolano debe empezar con 04XX o 02X (ej. 0412, 0414, 0424, 0426).");
+    if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+      setStepError("El número de teléfono debe tener entre 7 y 15 dígitos.");
       return;
     }
     goToStep(3);
@@ -585,7 +580,7 @@ export default function Register({ onGoToLogin }: RegisterProps) {
                         value={phone}
                         onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ""))}
                         placeholder={countryCode === "+58" ? "04121234567" : "Número sin prefijo"}
-                        maxLength={11}
+                        maxLength={15}
                         className={inputClass}
                       />
                     </div>
