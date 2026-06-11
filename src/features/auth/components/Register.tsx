@@ -22,6 +22,21 @@ const PLAN_OPTIONS: { value: PlanType; label: string; sublabel: string; price: s
 
 const PAYMENT_METHOD_SUGGESTIONS = ["Transferencia bancaria", "Pago móvil", "Zelle", "Binance Pay", "Efectivo"];
 
+const COUNTRY_CODES: { flag: string; code: string; name: string; digits: number }[] = [
+  { flag: "🇻🇪", code: "+58",  name: "Venezuela",      digits: 10 },
+  { flag: "🇺🇸", code: "+1",   name: "EE.UU.",         digits: 10 },
+  { flag: "🇲🇽", code: "+52",  name: "México",         digits: 10 },
+  { flag: "🇨🇴", code: "+57",  name: "Colombia",       digits: 10 },
+  { flag: "🇦🇷", code: "+54",  name: "Argentina",      digits: 10 },
+  { flag: "🇵🇪", code: "+51",  name: "Perú",           digits: 9  },
+  { flag: "🇨🇱", code: "+56",  name: "Chile",          digits: 9  },
+  { flag: "🇪🇸", code: "+34",  name: "España",         digits: 9  },
+  { flag: "🇵🇦", code: "+507", name: "Panamá",         digits: 8  },
+  { flag: "🇩🇴", code: "+1",   name: "Rep. Dominicana",digits: 10 },
+];
+
+const ALPHANUMERIC_RE = /^(?=.*[a-zA-Z])(?=.*[0-9]).{6,}$/;
+
 const MAX_RECEIPT_SIZE = 5 * 1024 * 1024; // 5MB
 
 type Step = 1 | 2 | 3;
@@ -40,6 +55,35 @@ function FieldError({ message }: { message: string | null }) {
     >
       {message}
     </motion.p>
+  );
+}
+
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white border border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group"
+    >
+      <div className="text-left">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{label}</p>
+        <p className="text-sm font-black text-slate-800 mt-0.5">{value}</p>
+      </div>
+      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg transition-all ${
+        copied
+          ? "bg-emerald-100 text-emerald-600"
+          : "bg-slate-100 text-slate-400 group-hover:bg-indigo-100 group-hover:text-indigo-600"
+      }`}>
+        {copied ? "✓ Copiado" : "Copiar"}
+      </span>
+    </button>
   );
 }
 
@@ -118,6 +162,7 @@ export default function Register({ onGoToLogin }: RegisterProps) {
   const [amount, setAmount] = useState("25");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [referenceNumber, setReferenceNumber] = useState("");
+  const [countryCode, setCountryCode] = useState("+58");
   const [phone, setPhone] = useState("");
 
   // Paso 3 — comprobante
@@ -166,16 +211,26 @@ export default function Register({ onGoToLogin }: RegisterProps) {
       setStepError("La contraseña debe tener al menos 6 caracteres.");
       return;
     }
+    if (!ALPHANUMERIC_RE.test(password)) {
+      setStepError("La contraseña debe contener letras y números (alfanumérica).");
+      return;
+    }
     goToStep(2);
   }
 
   function handleNextFromStep2() {
-    if (!amount.trim() || !paymentMethod.trim() || !referenceNumber.trim() || !phone.trim()) {
+    if (!paymentMethod.trim() || !referenceNumber.trim() || !phone.trim()) {
       setStepError("Completa todos los campos del pago para continuar.");
       return;
     }
-    if (Number(amount) <= 0 || Number.isNaN(Number(amount))) {
-      setStepError("Ingresa un monto válido.");
+    const selectedCountry = COUNTRY_CODES.find((c) => c.code === countryCode) ?? COUNTRY_CODES[0];
+    const digitsOnly = phone.replace(/\D/g, "");
+    if (digitsOnly.length !== selectedCountry.digits) {
+      setStepError(`El teléfono para ${selectedCountry.name} debe tener exactamente ${selectedCountry.digits} dígitos.`);
+      return;
+    }
+    if (countryCode === "+58" && !/^(04[1-9]|02[0-9])/.test(digitsOnly)) {
+      setStepError("El teléfono venezolano debe empezar con 04XX o 02X (ej. 0412, 0414, 0424, 0426).");
       return;
     }
     goToStep(3);
@@ -246,10 +301,10 @@ export default function Register({ onGoToLogin }: RegisterProps) {
           email: email.trim(),
           password,
           plan,
-          amount: Number(amount),
+          amount: Number(bsAmount ?? amount),
           payment_method: paymentMethod.trim(),
           reference_number: referenceNumber.trim(),
-          phone: phone.trim(),
+          phone: `${countryCode}${phone.trim()}`,
           receipt_path: receiptPath,
         }),
       });
@@ -315,8 +370,38 @@ export default function Register({ onGoToLogin }: RegisterProps) {
                 <label className={labelClass}>Contraseña</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" className={inputClass} />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Mínimo 6 caracteres, letras y números"
+                    className={inputClass}
+                  />
                 </div>
+                {/* Password strength hints */}
+                {password.length > 0 && (
+                  <div className="flex gap-3 mt-1 ml-1">
+                    <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                      password.length >= 6 ? "text-emerald-500" : "text-slate-300"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${password.length >= 6 ? "bg-emerald-500" : "bg-slate-200"}`} />
+                      6+ caracteres
+                    </span>
+                    <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                      /[a-zA-Z]/.test(password) ? "text-emerald-500" : "text-slate-300"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${/[a-zA-Z]/.test(password) ? "bg-emerald-500" : "bg-slate-200"}`} />
+                      Letras
+                    </span>
+                    <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                      /[0-9]/.test(password) ? "text-emerald-500" : "text-slate-300"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${/[0-9]/.test(password) ? "bg-emerald-500" : "bg-slate-200"}`} />
+                      Números
+                    </span>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -360,6 +445,19 @@ export default function Register({ onGoToLogin }: RegisterProps) {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* ── Datos de pago móvil ── */}
+              <div className="rounded-2xl border-2 border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50 p-4 space-y-2">
+                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                  <CreditCard size={11} /> Realiza tu pago móvil a estos datos
+                </p>
+                <CopyField label="Cédula" value="27536328" />
+                <CopyField label="Teléfono" value="04124373631" />
+                <CopyField label="Banco" value="Banco de Venezuela" />
+                <p className="text-[10px] text-indigo-400 font-medium pt-1 pl-1">
+                  💡 Toca cualquier campo para copiarlo al portapapeles
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -420,10 +518,39 @@ export default function Register({ onGoToLogin }: RegisterProps) {
 
                 <div className="space-y-2">
                   <label className={labelClass}>Teléfono</label>
-                  <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Tu número de contacto" className={inputClass} />
+                  <div className="flex gap-2">
+                    {/* Country selector */}
+                    <select
+                      value={countryCode}
+                      onChange={(e) => { setCountryCode(e.target.value); setPhone(""); }}
+                      className="shrink-0 bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-2xl py-4 px-3 text-sm font-bold outline-none transition-all appearance-none cursor-pointer"
+                      style={{ minWidth: "90px" }}
+                    >
+                      {COUNTRY_CODES.map((c) => (
+                        <option key={`${c.name}-${c.code}`} value={c.code}>
+                          {c.flag} {c.code}
+                        </option>
+                      ))}
+                    </select>
+                    {/* Number input */}
+                    <div className="relative flex-1">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input
+                        type="tel"
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ""))}
+                        placeholder={countryCode === "+58" ? "04121234567" : "Número sin prefijo"}
+                        maxLength={COUNTRY_CODES.find((c) => c.code === countryCode)?.digits ?? 12}
+                        className={inputClass}
+                      />
+                    </div>
                   </div>
+                  {countryCode === "+58" && (
+                    <p className="text-[10px] text-slate-400 font-medium ml-1">
+                      Venezuela: 0412, 0414, 0416, 0424, 0426 + 7 dígitos
+                    </p>
+                  )}
                 </div>
               </div>
 
