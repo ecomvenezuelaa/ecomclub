@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Mail, Lock, User, Sparkles, Phone, Hash, CreditCard, Upload,
   CheckCircle2, ChevronLeft, ChevronRight, Clock, FileText, X,
@@ -12,12 +12,12 @@ interface RegisterProps {
   onGoToLogin: () => void;
 }
 
-const PLAN_OPTIONS: { value: PlanType; label: string; sublabel: string }[] = [
-  { value: "1m", label: "1 mes", sublabel: "Acceso mensual" },
-  { value: "3m", label: "3 meses", sublabel: "Plan trimestral" },
-  { value: "6m", label: "6 meses", sublabel: "Plan semestral" },
-  { value: "1y", label: "1 año", sublabel: "Plan anual" },
-  { value: "indefinido", label: "Indefinido", sublabel: "Pago único, sin vencimiento" },
+const PLAN_OPTIONS: { value: PlanType; label: string; sublabel: string; price: string }[] = [
+  { value: "1m", label: "1 mes", sublabel: "Acceso mensual", price: "25" },
+  // { value: "3m", label: "3 meses", sublabel: "Plan trimestral", price: "" },   // oculto temporalmente
+  // { value: "6m", label: "6 meses", sublabel: "Plan semestral", price: "" },    // oculto temporalmente
+  { value: "1y", label: "1 año", sublabel: "Plan anual", price: "197" },
+  // { value: "indefinido", label: "Indefinido", sublabel: "Pago único, sin vencimiento", price: "" }, // oculto temporalmente
 ];
 
 const PAYMENT_METHOD_SUGGESTIONS = ["Transferencia bancaria", "Pago móvil", "Zelle", "Binance Pay", "Efectivo"];
@@ -115,7 +115,7 @@ export default function Register({ onGoToLogin }: RegisterProps) {
 
   // Paso 2 — plan y datos de pago
   const [plan, setPlan] = useState<PlanType>("1m");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState("25");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [referenceNumber, setReferenceNumber] = useState("");
   const [phone, setPhone] = useState("");
@@ -129,6 +129,28 @@ export default function Register({ onGoToLogin }: RegisterProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Tasa BCV
+  const [bcvRate, setBcvRate] = useState<number | null>(null);
+  const [bcvLoading, setBcvLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("https://ve.dolarapi.com/v1/dolares/oficial")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.promedio) {
+          setBcvRate(data.promedio);
+          // Pre-fill amount in Bs for the default plan (1m = $25)
+          setAmount((25 * data.promedio).toFixed(2));
+        }
+      })
+      .catch(() => { /* si falla la API, el campo quedará editable */ })
+      .finally(() => setBcvLoading(false));
+  }, []);
+
+  // Bs equivalente del plan seleccionado
+  const selectedPlan = PLAN_OPTIONS.find((p) => p.value === plan);
+  const bsAmount = bcvRate && selectedPlan ? (parseFloat(selectedPlan.price) * bcvRate).toFixed(2) : null;
 
   function goToStep(target: Step) {
     setStepError(null);
@@ -309,12 +331,16 @@ export default function Register({ onGoToLogin }: RegisterProps) {
             >
               <div className="space-y-2">
                 <label className={labelClass}>Plan</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {PLAN_OPTIONS.map((p) => (
                     <button
                       key={p.value}
                       type="button"
-                      onClick={() => setPlan(p.value)}
+                      onClick={() => {
+                        setPlan(p.value);
+                        const bs = bcvRate ? (parseFloat(p.price) * bcvRate).toFixed(2) : p.price;
+                        setAmount(bs);
+                      }}
                       className={`text-left p-4 rounded-2xl border-2 transition-all ${
                         plan === p.value
                           ? "border-indigo-600 bg-indigo-50"
@@ -322,6 +348,14 @@ export default function Register({ onGoToLogin }: RegisterProps) {
                       }`}
                     >
                       <p className={`font-black text-sm ${plan === p.value ? "text-indigo-600" : "text-slate-800"}`}>{p.label}</p>
+                      <p className={`font-black text-lg mt-1 ${plan === p.value ? "text-indigo-700" : "text-slate-900"}`}>
+                        ${p.price} <span className="text-xs font-medium text-slate-400">USD</span>
+                      </p>
+                      {bcvRate ? (
+                        <p className="text-xs font-bold text-emerald-600 mt-0.5">
+                          Bs. {(parseFloat(p.price) * bcvRate).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      ) : null}
                       <p className="text-[11px] font-medium text-slate-400 mt-0.5">{p.sublabel}</p>
                     </button>
                   ))}
@@ -330,11 +364,29 @@ export default function Register({ onGoToLogin }: RegisterProps) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <label className={labelClass}>Monto pagado</label>
+                  <label className={labelClass}>Monto a pagar (Bs.)</label>
                   <div className="relative">
                     <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input type="number" min="0" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className={inputClass} />
+                    {bcvLoading ? (
+                      <div className={`${inputClass} flex items-center text-slate-400`}>
+                        <span className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin mr-2" />
+                        Calculando...
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        readOnly
+                        value={bsAmount ? `Bs. ${parseFloat(bsAmount).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : amount}
+                        className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-600 font-bold select-none`}
+                        title="El monto es calculado automáticamente según la tasa BCV"
+                      />
+                    )}
                   </div>
+                  {bcvRate && (
+                    <p className="text-[10px] text-slate-400 font-medium ml-1">
+                      Tasa BCV: 1 USD = Bs. {bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
