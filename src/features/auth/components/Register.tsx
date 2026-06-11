@@ -12,13 +12,28 @@ interface RegisterProps {
   onGoToLogin: () => void;
 }
 
-const PLAN_OPTIONS: { value: PlanType; label: string; sublabel: string }[] = [
-  { value: "1m", label: "1 mes", sublabel: "Acceso mensual" },
-  { value: "3m", label: "3 meses", sublabel: "Plan trimestral" },
-  { value: "6m", label: "6 meses", sublabel: "Plan semestral" },
-  { value: "1y", label: "1 año", sublabel: "Plan anual" },
-  { value: "indefinido", label: "Indefinido", sublabel: "Pago único, sin vencimiento" },
+const PLAN_OPTIONS: { value: PlanType; label: string; sublabel: string; price: string }[] = [
+  { value: "1m", label: "1 mes", sublabel: "Acceso mensual", price: "25" },
+  // { value: "3m", label: "3 meses", sublabel: "Plan trimestral", price: "" },   // oculto temporalmente
+  // { value: "6m", label: "6 meses", sublabel: "Plan semestral", price: "" },    // oculto temporalmente
+  { value: "1y", label: "1 año", sublabel: "Plan anual", price: "197" },
+  // { value: "indefinido", label: "Indefinido", sublabel: "Pago único, sin vencimiento", price: "" }, // oculto temporalmente
 ];
+
+const COUNTRY_CODES: { flag: string; code: string; name: string; digits: number }[] = [
+  { flag: "🇻🇪", code: "+58",  name: "Venezuela",      digits: 10 },
+  { flag: "🇺🇸", code: "+1",   name: "EE.UU.",         digits: 10 },
+  { flag: "🇲🇽", code: "+52",  name: "México",         digits: 10 },
+  { flag: "🇨🇴", code: "+57",  name: "Colombia",       digits: 10 },
+  { flag: "🇦🇷", code: "+54",  name: "Argentina",      digits: 10 },
+  { flag: "🇵🇪", code: "+51",  name: "Perú",           digits: 9  },
+  { flag: "🇨🇱", code: "+56",  name: "Chile",          digits: 9  },
+  { flag: "🇪🇸", code: "+34",  name: "España",         digits: 9  },
+  { flag: "🇵🇦", code: "+507", name: "Panamá",         digits: 8  },
+  { flag: "🇩🇴", code: "+1",   name: "Rep. Dominicana",digits: 10 },
+];
+
+const ALPHANUMERIC_RE = /^(?=.*[a-zA-Z])(?=.*[0-9]).{6,}$/;
 
 const MAX_RECEIPT_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -38,6 +53,35 @@ function FieldError({ message }: { message: string | null }) {
     >
       {message}
     </motion.p>
+  );
+}
+
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white border border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group"
+    >
+      <div className="text-left">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{label}</p>
+        <p className="text-sm font-black text-slate-800 mt-0.5">{value}</p>
+      </div>
+      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg transition-all ${
+        copied
+          ? "bg-emerald-100 text-emerald-600"
+          : "bg-slate-100 text-slate-400 group-hover:bg-indigo-100 group-hover:text-indigo-600"
+      }`}>
+        {copied ? "✓ Copiado" : "Copiar"}
+      </span>
+    </button>
   );
 }
 
@@ -113,8 +157,9 @@ export default function Register({ onGoToLogin }: RegisterProps) {
 
   // Paso 2 — plan y datos de pago
   const [plan, setPlan] = useState<PlanType>("1m");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState("25");
   const [referenceNumber, setReferenceNumber] = useState("");
+  const [countryCode, setCountryCode] = useState("+58");
   const [phone, setPhone] = useState("");
 
   // Métodos de pago activos (catálogo público)
@@ -159,6 +204,28 @@ export default function Register({ onGoToLogin }: RegisterProps) {
     };
   }, []);
 
+  // Tasa BCV
+  const [bcvRate, setBcvRate] = useState<number | null>(null);
+  const [bcvLoading, setBcvLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("https://ve.dolarapi.com/v1/dolares/oficial")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.promedio) {
+          setBcvRate(data.promedio);
+          // Pre-fill amount in Bs for the default plan (1m = $25)
+          setAmount((25 * data.promedio).toFixed(2));
+        }
+      })
+      .catch(() => { /* si falla la API, el campo quedará editable */ })
+      .finally(() => setBcvLoading(false));
+  }, []);
+
+  // Bs equivalente del plan seleccionado
+  const selectedPlan = PLAN_OPTIONS.find((p) => p.value === plan);
+  const bsAmount = bcvRate && selectedPlan ? (parseFloat(selectedPlan.price) * bcvRate).toFixed(2) : null;
+
   function goToStep(target: Step) {
     setStepError(null);
     setStep(target);
@@ -173,6 +240,10 @@ export default function Register({ onGoToLogin }: RegisterProps) {
       setStepError("La contraseña debe tener al menos 6 caracteres.");
       return;
     }
+    if (!ALPHANUMERIC_RE.test(password)) {
+      setStepError("La contraseña debe contener letras y números (alfanumérica).");
+      return;
+    }
     goToStep(2);
   }
 
@@ -181,8 +252,14 @@ export default function Register({ onGoToLogin }: RegisterProps) {
       setStepError("Completa todos los campos del pago para continuar.");
       return;
     }
-    if (Number(amount) <= 0 || Number.isNaN(Number(amount))) {
-      setStepError("Ingresa un monto válido.");
+    const selectedCountry = COUNTRY_CODES.find((c) => c.code === countryCode) ?? COUNTRY_CODES[0];
+    const digitsOnly = phone.replace(/\D/g, "");
+    if (digitsOnly.length !== selectedCountry.digits) {
+      setStepError(`El teléfono para ${selectedCountry.name} debe tener exactamente ${selectedCountry.digits} dígitos.`);
+      return;
+    }
+    if (countryCode === "+58" && !/^(04[1-9]|02[0-9])/.test(digitsOnly)) {
+      setStepError("El teléfono venezolano debe empezar con 04XX o 02X (ej. 0412, 0414, 0424, 0426).");
       return;
     }
     goToStep(3);
@@ -257,10 +334,10 @@ export default function Register({ onGoToLogin }: RegisterProps) {
           email: email.trim(),
           password,
           plan,
-          amount: Number(amount),
+          amount: Number(bsAmount ?? amount),
           payment_method_id: selectedMethodId,
           reference_number: referenceNumber.trim(),
-          phone: phone.trim(),
+          phone: `${countryCode}${phone.trim()}`,
           receipt_path: receiptPath,
         }),
       });
@@ -326,8 +403,38 @@ export default function Register({ onGoToLogin }: RegisterProps) {
                 <label className={labelClass}>Contraseña</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" className={inputClass} />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Mínimo 6 caracteres, letras y números"
+                    className={inputClass}
+                  />
                 </div>
+                {/* Password strength hints */}
+                {password.length > 0 && (
+                  <div className="flex gap-3 mt-1 ml-1">
+                    <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                      password.length >= 6 ? "text-emerald-500" : "text-slate-300"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${password.length >= 6 ? "bg-emerald-500" : "bg-slate-200"}`} />
+                      6+ caracteres
+                    </span>
+                    <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                      /[a-zA-Z]/.test(password) ? "text-emerald-500" : "text-slate-300"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${/[a-zA-Z]/.test(password) ? "bg-emerald-500" : "bg-slate-200"}`} />
+                      Letras
+                    </span>
+                    <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                      /[0-9]/.test(password) ? "text-emerald-500" : "text-slate-300"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${/[0-9]/.test(password) ? "bg-emerald-500" : "bg-slate-200"}`} />
+                      Números
+                    </span>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -342,12 +449,16 @@ export default function Register({ onGoToLogin }: RegisterProps) {
             >
               <div className="space-y-2">
                 <label className={labelClass}>Plan</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {PLAN_OPTIONS.map((p) => (
                     <button
                       key={p.value}
                       type="button"
-                      onClick={() => setPlan(p.value)}
+                      onClick={() => {
+                        setPlan(p.value);
+                        const bs = bcvRate ? (parseFloat(p.price) * bcvRate).toFixed(2) : p.price;
+                        setAmount(bs);
+                      }}
                       className={`text-left p-4 rounded-2xl border-2 transition-all ${
                         plan === p.value
                           ? "border-indigo-600 bg-indigo-50"
@@ -355,6 +466,14 @@ export default function Register({ onGoToLogin }: RegisterProps) {
                       }`}
                     >
                       <p className={`font-black text-sm ${plan === p.value ? "text-indigo-600" : "text-slate-800"}`}>{p.label}</p>
+                      <p className={`font-black text-lg mt-1 ${plan === p.value ? "text-indigo-700" : "text-slate-900"}`}>
+                        ${p.price} <span className="text-xs font-medium text-slate-400">USD</span>
+                      </p>
+                      {bcvRate ? (
+                        <p className="text-xs font-bold text-emerald-600 mt-0.5">
+                          Bs. {(parseFloat(p.price) * bcvRate).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      ) : null}
                       <p className="text-[11px] font-medium text-slate-400 mt-0.5">{p.sublabel}</p>
                     </button>
                   ))}
@@ -362,11 +481,29 @@ export default function Register({ onGoToLogin }: RegisterProps) {
               </div>
 
               <div className="space-y-2">
-                <label className={labelClass}>Monto pagado</label>
+                <label className={labelClass}>Monto a pagar (Bs.)</label>
                 <div className="relative">
                   <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input type="number" min="0" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className={inputClass} />
+                  {bcvLoading ? (
+                    <div className={`${inputClass} flex items-center text-slate-400`}>
+                      <span className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin mr-2" />
+                      Calculando...
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      readOnly
+                      value={bsAmount ? `Bs. ${parseFloat(bsAmount).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : amount}
+                      className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-600 font-bold select-none`}
+                      title="El monto es calculado automáticamente según la tasa BCV"
+                    />
+                  )}
                 </div>
+                {bcvRate && (
+                  <p className="text-[10px] text-slate-400 font-medium ml-1">
+                    Tasa BCV: 1 USD = Bs. {bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -401,14 +538,16 @@ export default function Register({ onGoToLogin }: RegisterProps) {
               </div>
 
               {selectedMethod && selectedMethod.fields.length > 0 && (
-                <div className="bg-indigo-50 rounded-2xl p-5 space-y-2">
-                  <p className="text-xs font-black text-indigo-400 uppercase tracking-[0.15em] mb-1">Datos para tu pago</p>
+                <div className="rounded-2xl border-2 border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50 p-4 space-y-2">
+                  <p className="text-[10px] font-black text-indigo-400 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                    <CreditCard size={11} /> Datos para tu pago
+                  </p>
                   {selectedMethod.fields.map((f) => (
-                    <div key={f.field_key} className="flex items-center justify-between gap-4 text-sm">
-                      <span className="font-medium text-slate-500">{f.field_label}</span>
-                      <span className="font-bold text-slate-800 text-right">{f.value ?? "—"}</span>
-                    </div>
+                    <CopyField key={f.field_key} label={f.field_label} value={f.value ?? "—"} />
                   ))}
+                  <p className="text-[10px] text-indigo-400 font-medium pt-1 pl-1">
+                    💡 Toca cualquier campo para copiarlo al portapapeles
+                  </p>
                 </div>
               )}
 
@@ -423,10 +562,39 @@ export default function Register({ onGoToLogin }: RegisterProps) {
 
                 <div className="space-y-2">
                   <label className={labelClass}>Teléfono</label>
-                  <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Tu número de contacto" className={inputClass} />
+                  <div className="flex gap-2">
+                    {/* Country selector */}
+                    <select
+                      value={countryCode}
+                      onChange={(e) => { setCountryCode(e.target.value); setPhone(""); }}
+                      className="shrink-0 bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-2xl py-4 px-3 text-sm font-bold outline-none transition-all appearance-none cursor-pointer"
+                      style={{ minWidth: "90px" }}
+                    >
+                      {COUNTRY_CODES.map((c) => (
+                        <option key={`${c.name}-${c.code}`} value={c.code}>
+                          {c.flag} {c.code}
+                        </option>
+                      ))}
+                    </select>
+                    {/* Number input */}
+                    <div className="relative flex-1">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input
+                        type="tel"
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ""))}
+                        placeholder={countryCode === "+58" ? "04121234567" : "Número sin prefijo"}
+                        maxLength={COUNTRY_CODES.find((c) => c.code === countryCode)?.digits ?? 12}
+                        className={inputClass}
+                      />
+                    </div>
                   </div>
+                  {countryCode === "+58" && (
+                    <p className="text-[10px] text-slate-400 font-medium ml-1">
+                      Venezuela: 0412, 0414, 0416, 0424, 0426 + 7 dígitos
+                    </p>
+                  )}
                 </div>
               </div>
 
