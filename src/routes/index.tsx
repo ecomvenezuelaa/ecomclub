@@ -11,6 +11,7 @@ import Landing from "../features/landing/landing";
 import Login from "../features/auth/components/Login";
 import Register from "../features/auth/components/Register";
 import InviteRegister from "../features/auth/components/InviteRegister";
+import AuthCallback from "../features/auth/components/AuthCallback";
 
 function AdminRoute() {
   const { user } = useAuth();
@@ -58,6 +59,7 @@ export const authRoutes: AppRoute[] = [
   { path: "/login", element: <LoginPage /> },
   { path: "/register", element: <RegisterPage /> },
   { path: "/invite", element: <InviteRegisterPage /> },
+  { path: "/auth/callback", element: <AuthCallback /> },
 ];
 
 export const appRoutes: AppRoute[] = [

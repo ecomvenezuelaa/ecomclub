@@ -32,6 +32,13 @@ function AnimatedRoutes({ routes, fallback }: { routes: AppRoute[]; fallback: st
 
 function AppContent() {
   const { user, isAuthenticated, logout, sessionExpired } = useAuth();
+  const location = useLocation();
+
+  // Always allow the OAuth callback to complete, even if session isn't set yet
+  if (location.pathname === "/auth/callback") {
+    const AuthCallback = React.lazy(() => import("./features/auth/components/AuthCallback"));
+    return <React.Suspense fallback={null}><AuthCallback /></React.Suspense>;
+  }
 
   if (sessionExpired) {
     return <SessionExpired />;
