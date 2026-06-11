@@ -5,9 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev      # Start dev server (Express proxy + Vite middleware) at http://localhost:3000
-npm run build    # Build frontend (vite) + bundle server (esbuild → dist/server.cjs)
-npm run start    # Run production build
+npm run dev      # Start Vite dev server at http://localhost:5173 (proxies /api to Python backend)
+npm run build    # Build static frontend (vite build → dist/)
+npm run preview  # Preview the production build locally
 npm run lint     # TypeScript type check (no emit)
 ```
 
@@ -22,9 +22,8 @@ uvicorn main:app --reload --port 8000
 ## Environment Variables
 
 ### Frontend (`.env` — copy from `.env.example`)
-- `VITE_API_URL` — URL of the Python backend exposed to the browser (e.g. `http://localhost:8000` for local dev, Railway URL for prod). When absent, `API_BASE` defaults to `""` and requests are proxied through the Express server.
-- `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` — used by the legacy Express routes (mostly unused now)
-- `GEMINI_API_KEY` — Google Gemini AI key
+- `VITE_API_URL` — URL of the Python backend exposed to the browser (e.g. Railway URL for prod). When absent, `API_BASE` defaults to `""` and the Vite dev server proxies `/api/*` to `PYTHON_BACKEND_URL` (default `http://localhost:8000`, see `vite.config.ts`).
+- `GEMINI_API_KEY` — Google Gemini AI key (AI Studio leftover, currently unused by `src/`)
 - `APP_URL` — hosting URL (injected automatically in production)
 
 ### Python backend (its own `.env`)
@@ -32,14 +31,13 @@ uvicorn main:app --reload --port 8000
 
 ## Architecture
 
-This repo is the **frontend SPA + a thin Node.js reverse proxy**. The actual API logic lives in the separate Python FastAPI backend repo.
+This repo is a **pure Vite/React SPA**. All API logic lives in the separate Python FastAPI backend repo (`Comunyapp Backend/backend`).
 
-### Dev server (`server.ts`)
-`server.ts` runs Express with Vite attached as middleware (HMR included). All `/api/*` requests are reverse-proxied server-side to the Python backend at `PYTHON_BACKEND_URL` (defaults to `http://localhost:8000`). The old Express `routes/` folder is **legacy and unused** — do not add routes there.
+### Dev server
+`vite.config.ts` proxies `/api/*` to `PYTHON_BACKEND_URL` (default `http://localhost:8000`) so the frontend can call relative `/api/...` paths during local development without CORS issues.
 
 ### Production
-- **Self-hosted**: Express serves the `dist/` static build and proxies `/api/*` to the Python backend.
-- **Vercel**: `vercel.json` routes `/api/*` to `api/index.ts` (re-exports the Express app) and everything else to `index.html`.
+- **Vercel**: `vercel.json` does a pure static build (`vite build` → `dist`) with SPA rewrites to `index.html`. The browser calls the Python backend directly cross-origin via `VITE_API_URL`.
 
 ### Python backend (separate repo)
 
