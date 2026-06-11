@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Camera, MapPin, Phone, User, Sparkles, ArrowRight, Check, X } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth, type User as AuthUser } from "../../context/AuthContext";
 import { useApiFetch } from "../../lib/api";
 
 const ONBOARDING_KEY = "onboarding_completed";
@@ -13,6 +13,12 @@ export function markOnboardingComplete() {
 export function needsOnboarding(userId: string | undefined): boolean {
   if (!userId) return false;
   return !localStorage.getItem(`${ONBOARDING_KEY}_${userId}`);
+}
+
+// El onboarding solo tiene sentido si falta alguno de los datos que pide
+export function hasIncompleteProfile(user: AuthUser | null | undefined): boolean {
+  if (!user) return false;
+  return !user.bio?.trim() || !user.city?.trim() || !user.gender?.trim() || !user.phone?.trim();
 }
 
 export function markOnboardingDoneForUser(userId: string) {

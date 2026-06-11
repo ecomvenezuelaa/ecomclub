@@ -7,7 +7,7 @@ import AccountStatus from "./features/auth/components/AccountStatus";
 import SessionExpired from "./features/auth/components/SessionExpired";
 import { needsActiveSubscription, hasActiveSubscription } from "./lib/permissions";
 import { authRoutes, appRoutes, AppRoute } from "./routes";
-import OnboardingModal, { needsOnboarding, markOnboardingDoneForUser } from "./features/onboarding/OnboardingModal";
+import OnboardingModal, { needsOnboarding, markOnboardingDoneForUser, hasIncompleteProfile } from "./features/onboarding/OnboardingModal";
 
 function AnimatedRoutes({ routes, fallback }: { routes: AppRoute[]; fallback: string }) {
   const location = useLocation();
@@ -51,7 +51,10 @@ function AppContent() {
 
 // Separated so the onboarding state is scoped to authenticated sessions
 function AuthenticatedApp({ onLogout, userId }: { onLogout: () => void; userId?: string }) {
-  const [showOnboarding, setShowOnboarding] = useState(() => needsOnboarding(userId));
+  const { user } = useAuth();
+  const [showOnboarding, setShowOnboarding] = useState(
+    () => needsOnboarding(userId) && hasIncompleteProfile(user)
+  );
 
   const handleOnboardingComplete = () => {
     if (userId) markOnboardingDoneForUser(userId);
