@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { ArrowLeft, PlayCircle, CheckCircle, Pencil, X, Trash2 } from "lucide-react";
 import { Course } from "../../../types";
 import { motion } from "motion/react";
@@ -29,23 +29,26 @@ export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }
   const { chapters, isLoading, refetch } = useCourseChapters(course.id);
   const api = useApiFetch();
   const { user } = useAuth();
-  const [activeModule, setActiveModule] = useState(0);
+  
+  const [activeChapterId, setActiveChapterId] = useState<string | null>(null);
+
+  // Set initial active chapter if not set
+  useMemo(() => {
+    if (chapters.length > 0 && !activeChapterId) {
+      setActiveChapterId(chapters[0].id);
+    }
+  }, [chapters, activeChapterId]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editVideoUrl, setEditVideoUrl] = useState("");
   const [editDuration, setEditDuration] = useState("");
+  const editFileInputRef = useRef<HTMLInputElement>(null);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  const playable = useMemo(
-    () => chapters.filter((ch) => ch.videoUrl),
-    [chapters]
-  );
-
-  const activeVideo = playable[activeModule]?.videoUrl
-    ? toEmbedUrl(playable[activeModule].videoUrl!)
-    : null;
+  const activeChapter = chapters.find((ch) => ch.id === activeChapterId);
+  const activeVideo = activeChapter?.videoUrl ? toEmbedUrl(activeChapter.videoUrl) : null;
 
   const handleChapterAdded = () => {
     refetch();
@@ -139,11 +142,19 @@ export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }
         <div className="rounded-3xl overflow-hidden aspect-video shadow-lg border-2 border-violet-100 bg-slate-900 relative">
           <iframe
             src={activeVideo}
-            title={playable[activeModule]?.title ?? course.title}
+            title={activeChapter?.title ?? course.title}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
             className="absolute inset-0 w-full h-full border-0"
           />
+        </div>
+      ) : activeChapterId ? (
+        <div className="rounded-3xl overflow-hidden aspect-video shadow-lg border-2 border-violet-100 bg-violet-50 flex flex-col items-center justify-center text-center p-6">
+          <CheckCircle size={48} className="text-violet-300 mb-4" />
+          <h3 className="text-lg font-black text-violet-900 mb-2">{activeChapter?.title}</h3>
+          <p className="text-sm font-medium text-violet-600 max-w-sm">
+            Este capítulo no tiene un video enlazado, pero puedes encontrar sus documentos o material de apoyo abajo.
+          </p>
         </div>
       ) : (
         <div className="rounded-3xl overflow-hidden aspect-video border-2 border-violet-100 bg-slate-100 flex items-center justify-center">
@@ -177,8 +188,7 @@ export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }
         ) : (
           <div className="space-y-2">
             {chapters.map((ch) => {
-              const playableIndex = playable.findIndex((p) => p.id === ch.id);
-              const isActive = playableIndex >= 0 && playableIndex === activeModule;
+              const isActive = activeChapterId === ch.id;
               const hasVideo = Boolean(ch.videoUrl);
 
               if (editingId === ch.id) {
@@ -259,9 +269,8 @@ export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }
                 >
                   <button
                     type="button"
-                    disabled={!hasVideo}
-                    onClick={() => { if (playableIndex >= 0) setActiveModule(playableIndex); }}
-                    className={`flex items-start gap-4 flex-1 text-left min-w-0 ${!hasVideo ? "opacity-80 cursor-default" : "hover:opacity-80 transition-opacity"}`}
+                    onClick={() => setActiveChapterId(ch.id)}
+                    className="flex items-start gap-4 flex-1 text-left min-w-0 hover:opacity-80 transition-opacity"
                   >
                     <div className={`mt-0.5 shrink-0 ${isActive ? "text-emerald-500" : "text-slate-400"}`}>
                       {isActive ? <CheckCircle size={20} /> : <PlayCircle size={20} />}
