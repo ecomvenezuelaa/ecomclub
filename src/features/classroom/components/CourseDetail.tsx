@@ -7,6 +7,8 @@ import { useApiFetch } from "../../../lib/api";
 import { useAuth } from "../../../context/AuthContext";
 import { isAdmin } from "../../../lib/permissions";
 import AddChapterForm from "./AddChapterForm";
+import ChapterPdfsAdmin from "./ChapterPdfsAdmin";
+import ActiveChapterPdfs from "./ActiveChapterPdfs";
 
 interface CourseDetailProps {
   course: Course;
@@ -201,7 +203,7 @@ export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }
                         disabled={isSavingEdit}
                         className="flex-1 py-2.5 bg-[#ae3df7] text-white text-sm font-bold rounded-xl disabled:opacity-50"
                       >
-                        {isSavingEdit ? "Guardando..." : "Guardar"}
+                        {isSavingEdit ? "Guardando..." : "Guardar título/video"}
                       </button>
                       <button
                         type="button"
@@ -209,9 +211,11 @@ export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }
                         disabled={isSavingEdit}
                         className="px-4 py-2.5 bg-white text-slate-600 text-sm font-bold rounded-xl border border-slate-200"
                       >
-                        Cancelar
+                        Cerrar edición
                       </button>
                     </div>
+
+                    <ChapterPdfsAdmin chapterId={ch.id} />
                   </div>
                 );
               }
@@ -246,6 +250,8 @@ export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }
                       {!hasVideo && (
                         <p className="text-xs text-slate-400 mt-1">Sin video enlazado</p>
                       )}
+                      
+                      {isActive && <ActiveChapterPdfs chapterId={ch.id} />}
                     </div>
                   </button>
 

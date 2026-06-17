@@ -38,6 +38,15 @@ export interface CourseChapter {
   sortOrder: number;
 }
 
+export interface ChapterPdf {
+  id: string;
+  chapterId: string;
+  title: string;
+  fileUrl: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
 export type View = "muro" | "classroom" | "profile" | "admin";
 
 export type PlanType = "1m" | "3m" | "6m" | "1y" | "indefinido";
