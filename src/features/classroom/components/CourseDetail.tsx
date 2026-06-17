@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { ArrowLeft, PlayCircle, CheckCircle, Pencil, X } from "lucide-react";
+import { ArrowLeft, PlayCircle, CheckCircle, Pencil, X, Trash2 } from "lucide-react";
 import { Course } from "../../../types";
 import { motion } from "motion/react";
 import { useCourseChapters } from "../hooks/useCourseChapters";
@@ -79,11 +79,30 @@ export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }
           duration: editDuration.trim() || null,
         }),
       });
-      setEditingId(null);
+      cancelEdit();
       refetch();
       onCourseUpdated?.();
     } catch (err) {
       setEditError(err instanceof Error ? err.message : "Error al guardar");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  }
+
+  async function deleteChapter(chapterId: string) {
+    if (!confirm("¿Estás seguro de que deseas eliminar este capítulo? Se perderá todo su contenido y progreso.")) return;
+    
+    setIsSavingEdit(true);
+    setEditError(null);
+    try {
+      await api(`/api/admin/classroom/courses/${course.id}/chapters/${chapterId}`, {
+        method: "DELETE",
+      });
+      cancelEdit();
+      refetch();
+      onCourseUpdated?.();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Error al eliminar capítulo");
     } finally {
       setIsSavingEdit(false);
     }
@@ -212,6 +231,15 @@ export default function CourseDetail({ course, onBack, onCourseUpdated, onEdit }
                         className="px-4 py-2.5 bg-white text-slate-600 text-sm font-bold rounded-xl border border-slate-200"
                       >
                         Cerrar edición
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteChapter(ch.id)}
+                        disabled={isSavingEdit}
+                        className="px-4 py-2.5 bg-red-50 text-red-600 text-sm font-bold rounded-xl border border-red-200 hover:bg-red-100 flex items-center justify-center"
+                        title="Eliminar capítulo"
+                      >
+                        <Trash2 size={18} />
                       </button>
                     </div>
 
