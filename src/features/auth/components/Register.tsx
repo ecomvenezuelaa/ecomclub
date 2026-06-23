@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { apiFetch } from "../../../lib/api";
-import type { PaymentMethod, PlanType } from "../../../types";
+import type { Currency, PaymentMethod, PlanType } from "../../../types";
 import logo from "../../../assets/logo.png";
 
 interface RegisterProps {
@@ -168,6 +168,10 @@ export default function Register({ onGoToLogin }: RegisterProps) {
   const [methodsLoading, setMethodsLoading] = useState(true);
   const [methodsError, setMethodsError] = useState<string | null>(null);
 
+  // Divisas (currencies)
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [selectedCurrencyId, setSelectedCurrencyId] = useState("");
+
   // Paso 3 — comprobante
   const [receiptFileName, setReceiptFileName] = useState("");
   const [receiptPath, setReceiptPath] = useState("");
@@ -199,6 +203,18 @@ export default function Register({ onGoToLogin }: RegisterProps) {
       }
     }
     loadPaymentMethods();
+    // Cargar divisas activas
+    apiFetch<Currency[]>("/api/currencies/")
+      .then(({ data }) => {
+        if (cancelled) return;
+        setCurrencies(data);
+        // Auto-seleccionar la primera divisa activa (o la base)
+        if (data.length > 0) {
+          const base = data.find((c) => c.is_base) ?? data[0];
+          setSelectedCurrencyId(base.id);
+        }
+      })
+      .catch(() => { /* si falla, el select quedará vacío */ });
     return () => {
       cancelled = true;
     };
@@ -250,6 +266,10 @@ export default function Register({ onGoToLogin }: RegisterProps) {
   function handleNextFromStep2() {
     if (!amount.trim() || !selectedMethodId || !referenceNumber.trim() || !phone.trim()) {
       setStepError("Completa todos los campos del pago para continuar.");
+      return;
+    }
+    if (!selectedCurrencyId) {
+      setStepError("No se pudo cargar la divisa de pago. Recarga la página e intenta de nuevo.");
       return;
     }
     const digitsOnly = phone.replace(/\D/g, "");
@@ -329,11 +349,14 @@ export default function Register({ onGoToLogin }: RegisterProps) {
           email: email.trim(),
           password,
           plan,
-          amount: Number(bsAmount ?? amount),
+          amount: Number(selectedPlan?.price ?? 0), // monto en USD
           payment_method_id: selectedMethodId,
           reference_number: referenceNumber.trim(),
           phone: `${countryCode}${phone.trim()}`,
           receipt_path: receiptPath,
+          currency_id: selectedCurrencyId,
+          amount_local: Number(bsAmount ?? amount),
+          exchange_rate: bcvRate ?? 1,
         }),
       });
       setSubmitted(true);
@@ -500,6 +523,32 @@ export default function Register({ onGoToLogin }: RegisterProps) {
                   </p>
                 )}
               </div>
+
+              {/* Selector de divisa — solo visible si hay más de una */}
+              {currencies.length > 1 && (
+                <div className="space-y-2">
+                  <label className={labelClass}>Divisa de pago</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {currencies.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setSelectedCurrencyId(c.id)}
+                        className={`text-left p-4 rounded-2xl border-2 transition-all ${
+                          selectedCurrencyId === c.id
+                            ? "border-indigo-600 bg-indigo-50"
+                            : "border-slate-100 bg-slate-50 hover:border-slate-200"
+                        }`}
+                      >
+                        <p className={`font-black text-sm ${selectedCurrencyId === c.id ? "text-indigo-600" : "text-slate-800"}`}>
+                          {c.symbol} {c.code}
+                        </p>
+                        <p className="text-[11px] font-medium text-slate-400 mt-0.5">{c.name}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <label className={labelClass}>Método de pago</label>

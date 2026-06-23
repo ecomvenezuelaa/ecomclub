@@ -62,6 +62,17 @@ export interface PaymentMethodField {
   value: string | null;
 }
 
+export interface Currency {
+  id: string;
+  code: string;
+  name: string;
+  symbol: string;
+  is_base: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PaymentMethod {
   id: string;
   name: string;
